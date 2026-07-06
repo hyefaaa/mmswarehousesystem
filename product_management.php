@@ -21,6 +21,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle product creation (Add Product Form POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_product') {
+    $name = trim($_POST['name']);
+    $barcode = trim($_POST['barcode']);
+    $qrcode = trim($_POST['qrcode']);
+    $category = trim($_POST['category']);
+    $uom = trim($_POST['uom']);
+    $pack_size = (int)$_POST['pack_size'];
+    $pallet_capacity = (int)$_POST['pallet_capacity'];
+    
+    if (empty($name) || empty($category)) {
+        $error_msg = "Product Name and Category are required.";
+    } else {
+        try {
+            // Check if product with same name already exists
+            $check = $pdo->prepare("SELECT id FROM products WHERE name = ? LIMIT 1");
+            $check->execute([$name]);
+            if ($check->fetch()) {
+                $error_msg = "A product with this name already exists.";
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO products (name, barcode, qrcode, category, uom, pack_size, pallet_capacity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                $stmt->execute([$name, $barcode, $qrcode, $category, $uom, $pack_size, $pallet_capacity]);
+                $success_msg = "Product created successfully!";
+            }
+        } catch (PDOException $e) {
+            $error_msg = "Database error: " . $e->getMessage();
+        }
+    }
+}
+
 // Handle status toggles
 if (isset($_GET['toggle_id'])) {
     $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = ?");
@@ -59,6 +89,7 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
+                <button type="button" class="btn btn-success fw-bold text-white" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> Add Product</button>
                 <a href="master_import.php" class="btn btn-info text-white fw-bold"><i class="bi bi-file-earmark-arrow-up me-1"></i> Bulk Import</a>
             </div>
         </div>
@@ -250,7 +281,72 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="product_management.php">
+            <input type="hidden" name="action" value="add_product">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--gradient-primary); color: white;">
+                    <h5 class="modal-title fw-bold" id="addProductModalLabel"><i class="bi bi-plus-circle me-2 text-cyan"></i>Add New Product</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Product Name *</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Chocolate Milk 125ml" required>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Category *</label>
+                            <input type="text" name="category" list="category_datalist" class="form-control" placeholder="UHT / PST / PSS" required>
+                            <datalist id="category_datalist">
+                                <?php foreach($categories as $cat): ?>
+                                    <option value="<?= htmlspecialchars($cat) ?>">
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">UOM</label>
+                            <input type="text" name="uom" class="form-control" value="Carton" placeholder="Carton / PCS" required>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Pack Size (Units/Ctn)</label>
+                            <input type="number" name="pack_size" class="form-control" value="1" min="1" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Pallet Capacity</label>
+                            <input type="number" name="pallet_capacity" class="form-control" value="60" min="1" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-primary">Barcode</label>
+                        <input type="text" name="barcode" class="form-control" placeholder="Scan or enter barcode value (optional)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-info">QR Code (Unique SKU ID)</label>
+                        <input type="text" name="qrcode" class="form-control" placeholder="Enter QR code unique ID (optional)">
+                        <div class="form-text small text-muted">The unique segment of your QR structure (e.g., text after <strong>GGGITN</strong> and before <strong>/BAN</strong>). Example: <code>O2CW1CO-0100S32A</code></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success text-white fw-bold">Add Product</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+function openAddModal() {
+    $('#addProductModal form')[0].reset();
+    const myModal = new bootstrap.Modal(document.getElementById('addProductModal'));
+    myModal.show();
+}
+
 function openEditModal(btn) {
     const id = $(btn).data('id');
     const name = $(btn).data('name');
