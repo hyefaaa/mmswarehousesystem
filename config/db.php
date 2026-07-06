@@ -50,4 +50,14 @@ if (!function_exists('log_system_activity')) {
         }
     }
 }
+
+// Auto-migration: Ensure qrcode column exists in products table
+try {
+    $check_column = $pdo->query("SHOW COLUMNS FROM products LIKE 'qrcode'")->fetch();
+    if (!$check_column) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN qrcode VARCHAR(100) NULL AFTER barcode");
+    }
+} catch (Exception $e) {
+    // Silently ignore if table doesn't exist yet
+}
 ?>
