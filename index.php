@@ -490,6 +490,14 @@ require_once 'includes/header.php';
                     <span class="desc" data-lang="card_reconcile_d">Audit bil fizikal lori vs rekod stok keluar.</span>
                 </div>
             </a>
+            
+            <a href="daily_closing_report.php" class="nav-card border-start border-warning border-3">
+                <div class="icon-box bg-warning text-dark"><i class="bi bi-calendar2-check-fill"></i></div>
+                <div class="content">
+                    <span class="title">Daily Closing Audit</span>
+                    <span class="desc">Borang pengesahan baki stok fizikal harian (closing).</span>
+                </div>
+            </a>
 
             <a href="spoilage_report.php" class="nav-card">
                 <div class="icon-box bg-danger text-white"><i class="bi bi-patch-exclamation"></i></div>

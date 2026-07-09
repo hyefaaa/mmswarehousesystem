@@ -120,6 +120,7 @@ $is_staff = ($role === 'admin' || $role === 'staff');
                         
                         <?php if ($is_staff): ?>
                         <li><a class="dropdown-item" href="reconcile.php"><span data-lang="nav_daily_reconcile">Daily Reconcile</span></a></li>
+                        <li><a class="dropdown-item" href="daily_closing_report.php"><i class="bi bi-calendar2-check-fill me-1 text-warning"></i><span>Daily Closing Audit</span></a></li>
                         <li><a class="dropdown-item" href="stock_take.php"><span data-lang="nav_stock_take">Stock Take</span></a></li>
                         <li><a class="dropdown-item" href="stock_transfer.php"><i class="bi bi-arrow-left-right me-1"></i><span data-lang="nav_stock_transfer">Stock Transfer</span></a></li>
                         <?php endif; ?>
