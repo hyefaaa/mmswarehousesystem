@@ -24,7 +24,7 @@ if ($handle === FALSE) {
 // MOVED OUTSIDE TRANSACTION: DDL statements (ALTER TABLE) cause an implicit commit in MySQL.
 // Must run this before starting the transaction.
 try {
-    $pdo->exec("ALTER TABLE schools_master MODIFY COLUMN zone_code VARCHAR(100)");
+    $pdo->exec("ALTER TABLE schools MODIFY COLUMN zone_code VARCHAR(100)");
 } catch (Exception $e) {
     // Ignore error if permission denied or column issues
 }
@@ -110,7 +110,7 @@ try {
         $cont_no  = ($idx_contract !== false && isset($data[$idx_contract])) ? trim($data[$idx_contract]) : '';
 
         // UPSERT QUERY
-        $sql = "INSERT INTO schools_master 
+        $sql = "INSERT INTO schools 
                 (school_code, school_name, student_count, zone_code, default_hd_id, address, 
                  co_number, sap_no, tender_no, contract_no)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

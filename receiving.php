@@ -30,7 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $lot_no      = htmlspecialchars(strip_tags($_POST['lot_no'] ?? ''));
     $expiry_date = htmlspecialchars(strip_tags($_POST['expiry_date'] ?? ''));
     $batch_no    = htmlspecialchars(strip_tags($_POST['batch_no'] ?? ''));
-    $pallet_id   = htmlspecialchars(strip_tags($_POST['pallet_id'] ?? ''));
+    $pallet_code = htmlspecialchars(strip_tags($_POST['pallet_type'] ?? 'none'));
     $qty         = (int)($_POST['qty'] ?? 0);
 
     if (empty($category) || empty($product_id) || empty($batch_no) || empty($qty) || empty($expiry_date)) {
@@ -39,42 +39,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         try {
             $pdo->beginTransaction();
 
-            // Pemetaan pallet type berdasarkan kod pallet_id (cth: PP003 -> Plastic Black)
-            $p_type = 'Plain';
-            $raw_pallet = strtoupper($pallet_id);
-            if (strpos($raw_pallet, 'PP') === 0 || strpos($raw_pallet, 'PB') === 0) {
-                $p_type = 'Plastic Black';
-            } elseif (strpos($raw_pallet, 'PW') === 0 || strpos($raw_pallet, 'PM') === 0) {
-                $p_type = 'Plain';
-            } elseif (strpos($raw_pallet, 'LR') === 0 || strpos($raw_pallet, 'PR') === 0) {
-                $p_type = 'Loscam Red';
-            } elseif (strpos($raw_pallet, 'LG') === 0 || strpos($raw_pallet, 'PG') === 0) {
-                $p_type = 'LHP Green';
-            } elseif (strpos($raw_pallet, 'FO') === 0) {
-                $p_type = 'FFM Orange';
-            } elseif (strpos($raw_pallet, 'FG') === 0) {
-                $p_type = 'FFM Green';
+            // Fetch pallet map dynamically
+            $pallet_map = ['none' => 'No Pallet'];
+            $db_pallets = $pdo->query("SELECT name, code FROM pallet_types")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($db_pallets as $p) {
+                $pallet_map[strtolower($p['code'])] = $p['name'];
             }
+            $p_type = $pallet_map[strtolower($pallet_code)] ?? 'No Pallet';
 
             // 1. Rekod header inbound
             $supplier_do = 'SR-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
-            $pallet_red = ($p_type === 'Loscam Red') ? 1 : 0;
-            $pallet_orange = ($p_type === 'FFM Orange') ? 1 : 0;
-            $pallet_black = ($p_type === 'Plastic Black') ? 1 : 0;
-            $pallet_ffm = ($p_type === 'FFM Green') ? 1 : 0;
-            $pallet_lhp = ($p_type === 'LHP Green') ? 1 : 0;
+            $pallet_red = ($pallet_code === 'red') ? 1 : 0;
+            $pallet_orange = ($pallet_code === 'orange') ? 1 : 0;
+            $pallet_black = ($pallet_code === 'black') ? 1 : 0;
+            $pallet_ffm = ($pallet_code === 'ffm') ? 1 : 0;
+            $pallet_lhp = ($pallet_code === 'lhp') ? 1 : 0;
+            $pallet_plain = ($pallet_code === 'plain') ? 1 : 0;
             $pallet_remarks = "Single GRN: Lot $lot_no";
 
             $stmtHeader = $pdo->prepare("INSERT INTO inbound_logs 
                 (category, received_date, supplier_do, remarks, 
                  pallet_qty_loscam_red, pallet_qty_ffm_orange, pallet_qty_plastic_black,
-                 pallet_qty_ffm_green, pallet_qty_lhp_green) 
-                VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?)");
+                 pallet_qty_ffm_green, pallet_qty_lhp_green, pallet_qty_plain_wood) 
+                VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmtHeader->execute([
                 $category, $supplier_do, $pallet_remarks,
-                $pallet_red, $pallet_orange, $pallet_black, $pallet_ffm, $pallet_lhp
+                $pallet_red, $pallet_orange, $pallet_black, $pallet_ffm, $pallet_lhp, $pallet_plain
             ]);
             $inbound_id = $pdo->lastInsertId();
+
+            // Record to pallet_ledger (Dynamic)
+            if ($pallet_code !== 'none') {
+                $stmtPalletLedger = $pdo->prepare("INSERT INTO pallet_ledger 
+                    (transaction_date, transaction_type, pallet_code, qty, reference_no, notes) 
+                    VALUES (NOW(), 'IN', ?, 1, ?, ?)");
+                $stmtPalletLedger->execute([
+                    $pallet_code,
+                    $supplier_do,
+                    "Received via Single-Receive (GRN ID: $inbound_id)"
+                ]);
+            }
 
             // 2. Rekod item inbound
             $stmtItem = $pdo->prepare("INSERT INTO inbound_items 
@@ -86,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmtStock = $pdo->prepare("INSERT INTO inventory_batches 
                 (product_id, batch_no, lot_no_raw, expiry_date, qty_on_hand, location_status, pallet_type, pallet_id_tag) 
                 VALUES (?, ?, ?, ?, ?, 'Warehouse', ?, ?)");
-            $stmtStock->execute([$product_id, $batch_no, $lot_no, $expiry_date, $qty, $p_type, $pallet_id]);
+            $stmtStock->execute([$product_id, $batch_no, $lot_no, $expiry_date, $qty, $p_type, '']);
 
             // 4. Rekod log aktiviti sistem
             if (function_exists('log_system_activity')) {
@@ -111,6 +115,14 @@ try {
     // Abaikan ralat
 }
 
+$pallet_types = [];
+try {
+    $stmtPallet = $pdo->query("SELECT name, code FROM pallet_types");
+    $pallet_types = $stmtPallet->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // Abaikan ralat
+}
+
 $page_title = 'Single Inbound Receiving';
 require_once 'includes/header.php';
 ?>
@@ -121,7 +133,7 @@ require_once 'includes/header.php';
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 20px;
+        padding: 30px 20px;
         margin-top: 1rem;
     }
 
@@ -129,32 +141,48 @@ require_once 'includes/header.php';
         width: 100%;
         max-width: 650px; 
         background: white; 
-        padding: 35px; 
-        border-radius: 20px; 
-        box-shadow: var(--card-shadow); 
-        border: 1px solid rgba(241, 245, 249, 0.9);
+        padding: 40px; 
+        border-radius: 24px; 
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03); 
+        border: 1px solid rgba(226, 232, 240, 0.8);
     }
-    .readonly-input { background-color: #f1f5f9; cursor: not-allowed; font-weight: bold; }
+    .readonly-input { background-color: #f8fafc !important; cursor: not-allowed; font-weight: 700; color: #475569 !important; border: 1.5px solid #e2e8f0; }
+    .form-control, .form-select {
+        border: 1.5px solid #cbd5e1;
+        border-radius: 12px;
+        height: 42px;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.15);
+    }
+    .form-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+    }
     .select2-container .select2-selection--single {
-        height: 38px;
-        border: 1.8px solid #cbd5e1;
+        height: 42px;
+        border: 1.5px solid #cbd5e1;
         display: flex;
         align-items: center;
         font-weight: 600;
         font-size: 0.9rem;
-        border-radius: 10px;
+        border-radius: 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px;
+        height: 40px;
     }
     
     @media (max-width: 576px) {
         .form-container {
-            padding: 22px 16px;
-            border-radius: 16px;
+            padding: 24px 20px;
+            border-radius: 20px;
         }
         .content-wrapper {
-            padding: 10px;
+            padding: 15px 10px;
             margin-top: 0.5rem;
         }
     }
@@ -215,14 +243,25 @@ require_once 'includes/header.php';
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Pallet ID (Raw Code)</label>
-                    <input type="text" name="pallet_id" id="pallet_id" class="form-control readonly-input text-center" required readonly>
+                    <label class="form-label fw-bold">Pallet Type</label>
+                    <select name="pallet_type" id="pallet_type" class="form-select" required>
+                        <option value="none">None</option>
+                        <?php foreach ($pallet_types as $pt): ?>
+                            <option value="<?= htmlspecialchars($pt['code']) ?>"><?= htmlspecialchars($pt['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-bold text-navy" style="font-size: 1.1rem;">Quantity (Cartons) *</label>
-                <input type="number" name="qty" class="form-control form-control-lg border-2 border-info text-center fw-bold" placeholder="Masukkan Kuantiti (ctn)" required min="1">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Quantity (Pieces)</label>
+                    <input type="number" id="qty_pcs" class="form-control readonly-input text-center" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold text-primary">Quantity (Cartons) *</label>
+                    <input type="number" name="qty" id="qty" class="form-control text-center fw-bold" placeholder="Masukkan Kuantiti (ctn)" required min="1">
+                </div>
             </div>
 
             <div class="d-grid gap-2">
@@ -297,12 +336,64 @@ require_once 'includes/header.php';
         parseTimeout = setTimeout(() => {
             const catVal = document.getElementById('category').value;
             fetch('ajax_parse_lot.php?lot_no=' + encodeURIComponent(lotString) + '&category=' + encodeURIComponent(catVal))
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.text();
+            })
+            .then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON. Raw response:', text);
+                    throw e;
+                }
+            })
             .then(data => {
                 if (data.status === 'success') {
-                    // Isi Batch No & Expiry Date
+                    // Verify product exists in database
+                    if (!data.data.product_id) {
+                        alert(MMS_LANG.t('err_product_not_registered'));
+                        document.getElementById('lot_no').value = '';
+                        document.getElementById('lot_no').style.borderColor = "#ef4444";
+                        
+                        // Clear fields
+                        document.getElementById('batch_no').value = '';
+                        document.getElementById('expiry_date').value = '';
+                        document.getElementById('shelf_life').value = '';
+                        document.getElementById('pallet_type').value = 'none';
+                        document.getElementById('qty_pcs').value = '';
+                        document.querySelector('input[name="qty"]').value = '';
+                        return;
+                    }
+
+                    // Strict category verification
+                    if (data.data.category) {
+                        const catSelect = document.getElementById('category');
+                        if (catSelect && catSelect.value !== data.data.category) {
+                            let errMsg = MMS_LANG.t('err_category_mismatch')
+                                            .replace('{prod_cat}', data.data.category)
+                                            .replace('{selected_cat}', catSelect.value);
+                            alert(errMsg);
+                            document.getElementById('lot_no').value = '';
+                            document.getElementById('lot_no').style.borderColor = "#ef4444";
+                            
+                            // Clear fields
+                            document.getElementById('batch_no').value = '';
+                            document.getElementById('expiry_date').value = '';
+                            document.getElementById('shelf_life').value = '';
+                            document.getElementById('pallet_type').value = 'none';
+                            document.getElementById('qty_pcs').value = '';
+                            document.querySelector('input[name="qty"]').value = '';
+                            return;
+                        }
+                    }
+
+                    // Clear any previous error border
+                    document.getElementById('lot_no').style.borderColor = "#10b981";
+
+                    // Isi Batch No & Qty Pieces
                     document.getElementById('batch_no').value = data.data.batch || '';
-                    document.getElementById('pallet_id').value = data.data.pallet_raw_code || '';
+                    document.getElementById('qty_pcs').value = data.data.qty_pieces || '';
                     
                     // Expiry Date format conversion (d/m/Y -> Y-m-d untuk input type="date")
                     if (data.data.expiry_date) {
@@ -389,18 +480,21 @@ require_once 'includes/header.php';
                     // Kira Kuantiti Carton selepas Produk Dipilih untuk memastikan pack size yang betul
                     if (data.data.qty_pieces && data.data.qty_pieces > 0) {
                         let finalQty = data.data.qty_pieces;
-                        if (sel && sel.value) {
+                        let packSize = parseInt(data.data.pack_size || 0);
+                        if (packSize > 0) {
+                            finalQty = Math.floor(data.data.qty_pieces / packSize);
+                        } else if (sel && sel.value) {
                             const opt = sel.options[sel.selectedIndex];
-                            let packSize = parseInt($(opt).data('packsize') || 0);
-                            if (packSize > 0) {
-                                finalQty = Math.floor(data.data.qty_pieces / packSize);
+                            let pSize = parseInt($(opt).data('packsize') || 0);
+                            if (pSize > 0) {
+                                finalQty = Math.floor(data.data.qty_pieces / pSize);
                             } else {
                                 const optText = opt.text;
                                 const match = optText.match(/(\d+)\s*(PK|PCS|PC)\/CTN/i);
                                 if (match) {
-                                    let pSize = parseInt(match[1]);
-                                    if (pSize > 0) {
-                                        finalQty = Math.floor(data.data.qty_pieces / pSize);
+                                    let pSizeMatch = parseInt(match[1]);
+                                    if (pSizeMatch > 0) {
+                                        finalQty = Math.floor(data.data.qty_pieces / pSizeMatch);
                                     }
                                 }
                             }
@@ -417,9 +511,18 @@ require_once 'includes/header.php';
         cameraModalInstance.show();
     }
 
+    let isScanning = false;
     function startScanner() {
+        isScanning = true;
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+        const config = { 
+            fps: 10, 
+            qrbox: 250,
+            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+        };
+        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            if (!isScanning) return;
+            isScanning = false;
             document.getElementById('lot_no').value = text;
             parseLotNo();
             cameraModalInstance.hide();

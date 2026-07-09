@@ -23,10 +23,11 @@ if ($role_check !== 'admin') {
 
 $error = '';
 $users = [];
+$hds_list = [];
 
 try {
-    // Ambil semua senarai pengguna
-    $users = $pdo->query("SELECT * FROM users_hub ORDER BY role ASC, username ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $users = $pdo->query("SELECT u.*, h.name as hd_name FROM users u LEFT JOIN hds h ON u.hd_id = h.id ORDER BY u.role ASC, u.username ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $hds_list = $pdo->query("SELECT id, name FROM hds WHERE status = 'Active' ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $error = 'Gagal memuatkan senarai pengguna: ' . $e->getMessage();
 }
@@ -105,6 +106,11 @@ require_once 'includes/header.php';
                                 <span class="badge <?= $role_badge ?> rounded-pill px-3 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;">
                                     <?= htmlspecialchars($u['role']) ?>
                                 </span>
+                                <?php if ($u['role'] === 'dealer' && !empty($u['hd_name'])): ?>
+                                    <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                                        <i class="bi bi-geo-alt-fill me-1"></i><?= htmlspecialchars($u['hd_name']) ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="badge <?= $status_badge ?> rounded-pill px-3 py-1 fw-bold" style="font-size: 0.72rem;">
@@ -177,6 +183,16 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                     </div>
+
+                    <div class="mb-3" id="hdSelectionDiv" style="display: none;">
+                        <label class="form-label fw-bold">Hub Dealer (HD) Asosiasi *</label>
+                        <select name="hd_id" id="formHdId" class="form-select">
+                            <option value="">-- Pilih HD --</option>
+                            <?php foreach ($hds_list as $hd): ?>
+                                <option value="<?= $hd['id'] ?>"><?= htmlspecialchars($hd['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light border-0 py-3" style="border-bottom-left-radius: 18px; border-bottom-right-radius: 18px;">
                     <button type="button" class="btn btn-secondary fw-bold px-4" data-bs-dismiss="modal">Batal</button>
@@ -225,6 +241,15 @@ require_once 'includes/header.php';
                     });
                 }
             });
+        // Form role change handler
+        $('#formRole').on('change', function() {
+            if ($(this).val() === 'dealer') {
+                $('#hdSelectionDiv').show();
+                $('#formHdId').prop('required', true);
+            } else {
+                $('#hdSelectionDiv').hide();
+                $('#formHdId').prop('required', false).val('');
+            }
         });
     });
 
@@ -235,6 +260,7 @@ require_once 'includes/header.php';
         $('#formUsername').prop('readonly', false);
         $('#formPassword').prop('required', true);
         $('#passwordHelp').hide();
+        $('#formRole').val('dealer').trigger('change');
         userModal.show();
     }
 
@@ -243,7 +269,8 @@ require_once 'includes/header.php';
         $('#formUserId').val(user.id);
         $('#formFullName').val(user.full_name);
         $('#formUsername').val(user.username).prop('readonly', true);
-        $('#formRole').val(user.role);
+        $('#formRole').val(user.role).trigger('change');
+        $('#formHdId').val(user.hd_id);
         $('#formIsActive').val(user.is_active);
         $('#modalTitle').html('<i class="bi bi-person-fill-gear me-2"></i>Kemaskini Maklumat Pengguna');
         $('#formPassword').prop('required', false);

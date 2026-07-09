@@ -35,7 +35,7 @@ try {
             SUM(di.qty_cartons) AS total_cartons,
             d.created_at
         FROM deliveries_pss d
-        LEFT JOIN schools_master s ON d.school_id = s.id
+        LEFT JOIN schools s ON d.school_id = s.id
         LEFT JOIN delivery_items_pss di ON d.id = di.delivery_id
         GROUP BY d.id)
         

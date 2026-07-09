@@ -80,6 +80,7 @@ require_once 'includes/header.php';
         </div>
     </div>
 
+    <?php if ($role === 'admin'): ?>
     <div id="adminArea" class="setup-grid">
         <strong>Import Data Baru (Excel):</strong><br>
         <input type="file" id="excelInput" onchange="handleExcel(event)" style="margin:15px 0;">
@@ -90,6 +91,7 @@ require_once 'includes/header.php';
             <select id="adminDistrictFilter" onchange="processAndRender()" style="flex:1; padding:10px; border-radius:6px; border:1px solid #ccc;"></select>
         </div>
     </div>
+    <?php endif; ?>
 
     <div id="mainDisplay"></div>
 </div>
@@ -115,11 +117,12 @@ require_once 'includes/header.php';
     }
 
     function updateFilters() {
-        const dealers   = [...new Set(schoolsData.map(s => s.dealer))].filter(Boolean).sort();
-        const districts = [...new Set(schoolsData.map(s => s.district))].filter(Boolean).sort();
-
         const dSel = document.getElementById('adminDealerFilter');
         const xSel = document.getElementById('adminDistrictFilter');
+        if (!dSel || !xSel) return;
+
+        const dealers   = [...new Set(schoolsData.map(s => s.dealer))].filter(Boolean).sort();
+        const districts = [...new Set(schoolsData.map(s => s.district))].filter(Boolean).sort();
 
         dSel.innerHTML = '<option value="all">Semua Dealer</option>' + dealers.map(d => `<option value="${d}">${d}</option>`).join('');
         xSel.innerHTML = '<option value="all">Semua Daerah</option>' + districts.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -130,8 +133,10 @@ require_once 'includes/header.php';
         c.innerHTML = "";
 
         let fD = schoolsData;
-        const sd = document.getElementById('adminDealerFilter').value;
-        const sx = document.getElementById('adminDistrictFilter').value;
+        const dSel = document.getElementById('adminDealerFilter');
+        const xSel = document.getElementById('adminDistrictFilter');
+        const sd = dSel ? dSel.value : 'all';
+        const sx = xSel ? xSel.value : 'all';
         if (sd && sd !== 'all') fD = fD.filter(x => x.dealer === sd);
         if (sx && sx !== 'all') fD = fD.filter(x => x.district === sx);
 

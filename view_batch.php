@@ -29,9 +29,10 @@ if ($batchId) {
     $sql = "
         SELECT 
             t.no_sap, t.kod_sekolah, t.bil_murid,
-            m.nama_sekolah, m.alamat, m.no_tel, m.nama_hd, m.daerah_master
+            s.school_name AS nama_sekolah, s.address AS alamat, s.no_tel, h.name AS nama_hd, s.zone_code AS daerah_master
         FROM import_transactions t
-        LEFT JOIN master_schools m ON t.kod_sekolah = m.kod_sekolah
+        LEFT JOIN schools s ON t.kod_sekolah = s.school_code
+        LEFT JOIN hds h ON s.default_hd_id = h.id
         WHERE t.batch_id = ?
         ORDER BY t.no_sap ASC
     ";

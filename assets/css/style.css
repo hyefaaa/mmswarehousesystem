@@ -433,3 +433,18 @@ body {
         width: 100% !important;
     }
 }
+
+/* Category Badge Styling */
+.badge-cat, .badge.badge-cat {
+    background-color: var(--mms-indigo-light) !important;
+    color: var(--mms-indigo) !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: inline-block !important;
+    line-height: 1 !important;
+    text-align: center !important;
+}

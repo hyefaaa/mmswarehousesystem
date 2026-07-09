@@ -8,6 +8,9 @@ $stmt = $pdo->prepare("SELECT id, name, category, pack_size, pallet_capacity FRO
 $stmt->execute();
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$stmtPallet = $pdo->query("SELECT name, code FROM pallet_types");
+$pallet_types = $stmtPallet->fetchAll(PDO::FETCH_ASSOC);
+
 $page_title = 'Advanced GRN Portal | MMS';
 require_once 'includes/header.php';
 ?>
@@ -54,7 +57,7 @@ require_once 'includes/header.php';
                     <div class="top-filter-bar shadow-sm">
                         <div class="row align-items-center">
                             <div class="col-md-4">
-                                <h5 class="mb-0 fw-800 text-primary"><i class="bi bi-funnel-fill me-2"></i>STEP 1: CATEGORY</h5>
+                                <h5 class="mb-0 fw-800 text-primary"><i class="bi bi-funnel-fill me-2"></i>STEP 1: TRANSPORTER CATEGORY</h5>
                             </div>
                             <div class="col-md-8">
                                 <select class="form-select form-select-lg fw-800 border-primary shadow-sm" id="main_category" onchange="applyCategoryFilter()">
@@ -165,6 +168,7 @@ require_once 'includes/header.php';
 
 <script>
     const productList = <?= json_encode($products); ?>;
+    const palletTypeList = <?= json_encode($pallet_types); ?>;
     let rowCount = 0;
     let html5QrCode = null;
     let activeRowIndex = null;
@@ -182,6 +186,11 @@ require_once 'includes/header.php';
 
     function addRow() {
         const id = rowCount++;
+
+        let palletOptions = '<option value="none">None</option>';
+        palletTypeList.forEach(p => {
+            palletOptions += `<option value="${p.code}">${p.name}</option>`;
+        });
 
         const html = `
             <tr id="row_${id}">
@@ -201,13 +210,7 @@ require_once 'includes/header.php';
                 <td data-label="Qty (Ctn)"><input type="number" name="items[${id}][qty]" id="qty_${id}" class="form-control form-control-sm text-center fw-bold border-primary px-1" required></td>
                 <td data-label="Pallet">
                     <select name="items[${id}][p_type]" class="form-select form-select-sm p-type-sel" onchange="updateHeaderTally()">
-                        <option value="none">None</option>
-                        <option value="plain">Wood</option>
-                        <option value="red">Loscam Red</option>
-                        <option value="lhp">LHP Green</option>
-                        <option value="orange">FFM Orange</option>
-                        <option value="ffm">FFM Green</option>
-                        <option value="black">Plastic Black</option>
+                        ${palletOptions}
                     </select>
                 </td>
                 <td data-label="P.Qty"><input type="number" name="items[${id}][p_qty]" class="form-control form-control-sm p-qty-val text-center fw-bold" value="0" oninput="updateHeaderTally()"></td>
@@ -236,7 +239,7 @@ require_once 'includes/header.php';
             sel.empty();
             sel.append('<option value="">Choose Product</option>');
             productList.forEach(p => {
-                if (p.category === cat) {
+                if (p.category === cat || p.id == currentVal) {
                     sel.append(`<option value="${p.id}" data-cat="${p.category}" data-packsize="${p.pack_size}">${p.name}</option>`);
                 }
             });
@@ -296,9 +299,68 @@ require_once 'includes/header.php';
         parseTimeout[id] = setTimeout(() => {
             const catVal = document.getElementById('main_category').value;
             fetch('ajax_parse_lot.php?lot_no=' + encodeURIComponent(lotString) + '&category=' + encodeURIComponent(catVal))
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.text();
+            })
+            .then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON. Raw response:', text);
+                    throw e;
+                }
+            })
             .then(data => {
             if (data.status === 'success') {
+                // Verify product exists in database
+                if (!data.data.product_id) {
+                    alert(MMS_LANG.t('err_product_not_registered'));
+                    input.value = '';
+                    input.style.borderColor = "#ef4444";
+                    
+                    // Clear fields for this row
+                    document.getElementById('batch_' + id).value = '';
+                    const expInput = document.getElementById('expiry_' + id);
+                    if (expInput) {
+                        if (expInput._flatpickr) expInput._flatpickr.clear();
+                        expInput.value = '';
+                    }
+                    const qtyPcsInput = document.getElementById('qty_pcs_' + id);
+                    if (qtyPcsInput) qtyPcsInput.value = '';
+                    const qtyInput = document.getElementById('qty_' + id);
+                    if (qtyInput) qtyInput.value = '';
+                    
+                    return;
+                }
+
+                // Strict category verification
+                if (data.data.category) {
+                    const mainCat = document.getElementById('main_category');
+                    if (mainCat && mainCat.value !== data.data.category) {
+                        let errMsg = MMS_LANG.t('err_category_mismatch')
+                                        .replace('{prod_cat}', data.data.category)
+                                        .replace('{selected_cat}', mainCat.value);
+                        alert(errMsg);
+                        input.value = '';
+                        input.style.borderColor = "#ef4444";
+                        
+                        // Clear fields for this row
+                        document.getElementById('batch_' + id).value = '';
+                        const expInput = document.getElementById('expiry_' + id);
+                        if (expInput) {
+                            if (expInput._flatpickr) expInput._flatpickr.clear();
+                            expInput.value = '';
+                        }
+                        const qtyPcsInput = document.getElementById('qty_pcs_' + id);
+                        if (qtyPcsInput) qtyPcsInput.value = '';
+                        const qtyInput = document.getElementById('qty_' + id);
+                        if (qtyInput) qtyInput.value = '';
+                        
+                        return;
+                    }
+                }
+
                 let batchVal = data.data.batch || '';
                 document.getElementById('batch_' + id).value = batchVal;
                 
@@ -382,37 +444,16 @@ require_once 'includes/header.php';
                     
                     const qtyInput = document.getElementById('qty_' + id);
                     if (qtyInput) {
-                        qtyInput.value = ""; // Dikosongkan sehingga produk dipilih
+                        let ctnVal = "";
+                        let packSize = parseInt(data.data.pack_size || 0);
+                        if (packSize > 0) {
+                            ctnVal = Math.floor(data.data.qty_pieces / packSize);
+                        }
+                        qtyInput.value = ctnVal;
                     }
                     // Cuba kira ctn jika produk sudah dipilih
                     calculateCtn(id);
                 }
-                
-                if (data.data.pallet_raw_code || data.data.pallet_id_short) {
-                    const pQtyInput = document.querySelector(`#row_${id} .p-qty-val`);
-                    if (pQtyInput && (pQtyInput.value == "0" || pQtyInput.value == "")) {
-                        pQtyInput.value = 1;
-                    }
-                    
-                    const raw = String(data.data.pallet_raw_code || '').toUpperCase();
-                    const pSel = document.querySelector(`#row_${id} .p-type-sel`);
-                    if (pSel) {
-                        if (raw.startsWith('PW') || raw.startsWith('PM')) {
-                            pSel.value = 'plain';
-                        } else if (raw.startsWith('LR') || raw.startsWith('PR')) {
-                            pSel.value = 'red';
-                        } else if (raw.startsWith('LG') || raw.startsWith('PG')) {
-                            pSel.value = 'lhp';
-                        } else if (raw.startsWith('FO')) {
-                            pSel.value = 'orange';
-                        } else if (raw.startsWith('FG')) {
-                            pSel.value = 'ffm';
-                        } else if (raw.startsWith('P')) { // Default any other P prefix (like PA, PK, PL, PN, PI, PJ, PE, PP, PB, PH) to Plastic Black
-                            pSel.value = 'black';
-                        }
-                    }
-                }
-                
                 input.style.borderColor = "#10b981";
                 updateHeaderTally();
                 
@@ -464,17 +505,27 @@ require_once 'includes/header.php';
         const totalFinalEl = document.getElementById('total_final');
         if(totalFinalEl) totalFinalEl.innerText = grand;
     }
-
     function openCameraForRow(idx) { activeRowIndex = idx; cameraModalInstance.show(); }
+    let isScanning = false;
     function startScanner() {
+        isScanning = true;
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+        
+        const config = { 
+            fps: 10, 
+            qrbox: 250,
+            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+        };
+        
+        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            if (!isScanning) return;
+            isScanning = false;
             const input = document.getElementById('scan_input_' + activeRowIndex);
             input.value = text;
             parseRowQR(input, activeRowIndex);
             cameraModalInstance.hide();
         });
     }
-    function stopScanner() { if(html5QrCode) html5QrCode.stop(); }
+    function stopScanner() { if(html5QrCode) html5QrCode.stop().catch(err => console.error(err)); }
 </script>
 <?php require_once 'includes/footer.php'; ?>

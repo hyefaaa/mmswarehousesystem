@@ -4,30 +4,86 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
-$co_list = $pdo->query("SELECT DISTINCT co_number FROM schools_master WHERE co_number IS NOT NULL ORDER BY co_number DESC")->fetchAll();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$role = $_SESSION['role'] ?? '';
+$hd_id_sess = $_SESSION['hd_id'] ?? null;
+
+$co_list = $pdo->query("
+    SELECT DISTINCT co_number FROM (
+        SELECT DISTINCT co_number FROM schools WHERE co_number IS NOT NULL
+        UNION
+        SELECT DISTINCT co_number FROM import_cos WHERE co_number IS NOT NULL
+    ) AS combined ORDER BY co_number DESC
+")->fetchAll();
 $selected_co = $_GET['co'] ?? ($co_list[0]['co_number'] ?? '');
 
+// Check if there are imported transactions in import_cos for selected CO
+$stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM import_cos WHERE co_number = ?");
+$stmtCheck->execute([$selected_co]);
+$has_imported_transactions = $stmtCheck->fetchColumn() > 0;
+
+if ($has_imported_transactions) {
+    if ($role === 'dealer') {
+        $sql = "SELECT s.id, s.school_name, s.school_code, t.bil_murid AS student_count, 
+                       s.default_hd_id, ? AS co_number, t.no_sap AS sap_no, 
+                       s.tender_no, s.contract_no, s.zone_code, h.name as hd_name 
+                FROM import_transactions t
+                JOIN import_cos co ON t.batch_id = co.batch_id
+                JOIN schools s ON t.kod_sekolah = s.school_code
+                LEFT JOIN hds h ON s.default_hd_id = h.id
+                WHERE co.co_number = ? AND s.default_hd_id = ? 
+                ORDER BY s.school_name ASC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$selected_co, $selected_co, $hd_id_sess]);
+    } else {
+        $sql = "SELECT s.id, s.school_name, s.school_code, t.bil_murid AS student_count, 
+                       s.default_hd_id, ? AS co_number, t.no_sap AS sap_no, 
+                       s.tender_no, s.contract_no, s.zone_code, h.name as hd_name 
+                FROM import_transactions t
+                JOIN import_cos co ON t.batch_id = co.batch_id
+                JOIN schools s ON t.kod_sekolah = s.school_code
+                LEFT JOIN hds h ON s.default_hd_id = h.id
+                WHERE co.co_number = ? 
+                ORDER BY s.school_name ASC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$selected_co, $selected_co]);
+    }
+} else {
+    if ($role === 'dealer') {
+        $stmt = $pdo->prepare("SELECT s.id, s.school_name, s.school_code, s.student_count, s.default_hd_id, s.co_number, s.sap_no, s.tender_no, s.contract_no, s.zone_code, h.name as hd_name FROM schools s LEFT JOIN hds h ON s.default_hd_id = h.id WHERE s.co_number = ? AND s.default_hd_id = ? ORDER BY s.school_name ASC");
+        $stmt->execute([$selected_co, $hd_id_sess]);
+    } else {
+        $stmt = $pdo->prepare("SELECT s.id, s.school_name, s.school_code, s.student_count, s.default_hd_id, s.co_number, s.sap_no, s.tender_no, s.contract_no, s.zone_code, h.name as hd_name FROM schools s LEFT JOIN hds h ON s.default_hd_id = h.id WHERE s.co_number = ? ORDER BY s.school_name ASC");
+        $stmt->execute([$selected_co]);
+    }
+}
+$schools = $stmt->fetchAll();
+
 // DASHBOARD DATA
-$stmt = $pdo->prepare("SELECT COUNT(*) as total_schools, SUM(student_count) as total_students FROM schools_master WHERE co_number = ?");
-$stmt->execute([$selected_co]);
-$stats_contract = $stmt->fetch();
+$stats_contract = [
+    'total_schools' => count($schools),
+    'total_students' => array_sum(array_column($schools, 'student_count'))
+];
 
 $stmt = $pdo->query("SELECT SUM(b.qty_on_hand) as total_stock FROM inventory_batches b JOIN products p ON b.product_id = p.id WHERE p.category = 'PSS' AND b.location_status = 'Warehouse'");
 $stats_stock = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT d.do_number, d.delivery_date, d.vehicle_plate, s.school_name FROM deliveries_pss d LEFT JOIN schools_master s ON d.school_id = s.id ORDER BY d.created_at DESC LIMIT 10");
-$stmt->execute();
+if ($role === 'dealer') {
+    $stmt = $pdo->prepare("SELECT d.do_number, d.delivery_date, d.vehicle_plate, s.school_name FROM deliveries_pss d LEFT JOIN schools s ON d.school_id = s.id WHERE d.hd_id = ? ORDER BY d.created_at DESC LIMIT 10");
+    $stmt->execute([$hd_id_sess]);
+} else {
+    $stmt = $pdo->prepare("SELECT d.do_number, d.delivery_date, d.vehicle_plate, s.school_name FROM deliveries_pss d LEFT JOIN schools s ON d.school_id = s.id ORDER BY d.created_at DESC LIMIT 10");
+    $stmt->execute();
+}
 $recent_deliveries = $stmt->fetchAll();
 
 // FORM DATA
 $hds = $pdo->query("SELECT id, name FROM hds WHERE status='Active' ORDER BY name ASC")->fetchAll();
-$stmt = $pdo->prepare("SELECT DISTINCT zone_code FROM schools_master WHERE co_number = ? AND zone_code IS NOT NULL AND zone_code != '' ORDER BY zone_code ASC");
-$stmt->execute([$selected_co]);
-$ppd_list = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-$stmt = $pdo->prepare("SELECT s.id, s.school_name, s.school_code, s.student_count, s.default_hd_id, s.co_number, s.sap_no, s.tender_no, s.contract_no, s.zone_code, h.name as hd_name FROM schools_master s LEFT JOIN hds h ON s.default_hd_id = h.id WHERE s.co_number = ? ORDER BY s.school_name ASC");
-$stmt->execute([$selected_co]);
-$schools = $stmt->fetchAll();
+$ppd_list = array_filter(array_unique(array_column($schools, 'zone_code')));
+sort($ppd_list);
 
 $batches = $pdo->query("SELECT b.id, b.batch_no, b.expiry_date, b.qty_on_hand FROM inventory_batches b JOIN products p ON b.product_id = p.id WHERE p.category = 'PSS' AND b.qty_on_hand > 0 AND b.location_status = 'Warehouse' ORDER BY b.expiry_date ASC")->fetchAll();
 
@@ -143,7 +199,7 @@ require_once 'includes/header.php';
                     </div>
                     <div class="card-body">
                         
-                        <div class="row g-3 mb-4 bg-light p-3 rounded border">
+                        <div class="row g-3 mb-4 bg-light p-3 rounded border" <?php if ($role === 'dealer') echo 'style="display:none;"'; ?>>
                             <div class="col-md-6">
                                 <label class="form-label">Tapis PPD</label>
                                 <select id="ppd_filter" class="form-select select2" onchange="filterSchools()">
@@ -156,9 +212,11 @@ require_once 'includes/header.php';
                             <div class="col-md-6">
                                 <label class="form-label">Tapis HD/Kontraktor</label>
                                 <select name="hd_id" id="hd_filter" class="form-select select2" onchange="filterSchools()">
-                                    <option value="all">Semua HD</option>
+                                    <?php if ($role !== 'dealer'): ?>
+                                        <option value="all">Semua HD</option>
+                                    <?php endif; ?>
                                     <?php foreach($hds as $hd): ?>
-                                        <option value="<?= $hd['id'] ?>"><?= htmlspecialchars($hd['name']) ?></option>
+                                        <option value="<?= $hd['id'] ?>" <?= ($role === 'dealer' && $hd_id_sess == $hd['id']) ? 'selected' : '' ?>><?= htmlspecialchars($hd['name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

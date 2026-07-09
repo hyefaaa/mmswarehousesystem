@@ -121,11 +121,12 @@ $is_staff = ($role === 'admin' || $role === 'staff');
                         <?php if ($is_staff): ?>
                         <li><a class="dropdown-item" href="reconcile.php"><span data-lang="nav_daily_reconcile">Daily Reconcile</span></a></li>
                         <li><a class="dropdown-item" href="stock_take.php"><span data-lang="nav_stock_take">Stock Take</span></a></li>
-                        <?php endif; ?>
                         <li><a class="dropdown-item" href="stock_transfer.php"><i class="bi bi-arrow-left-right me-1"></i><span data-lang="nav_stock_transfer">Stock Transfer</span></a></li>
+                        <?php endif; ?>
                     </ul>
                 </li>
 
+                <?php if ($is_staff): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-graph-up-arrow me-1"></i><span data-lang="nav_reports">Reports</span>
@@ -133,8 +134,10 @@ $is_staff = ($role === 'admin' || $role === 'staff');
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="reports.php"><i class="bi bi-search me-1"></i><span data-lang="nav_wh_monitor">Warehouse Monitor</span></a></li>
                         <li><a class="dropdown-item" href="inventory_report.php"><i class="bi bi-clipboard2-data me-1"></i><span data-lang="nav_inv_report">Inventory Report</span></a></li>
+                        <li><a class="dropdown-item" href="pallet_management.php"><i class="bi bi-grid-3x3-gap me-1"></i><span data-lang="nav_pallet_monitor">Pallet Monitor</span></a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
                 
                 <?php if ($is_staff): ?>
                 <li class="nav-item dropdown">
@@ -142,7 +145,7 @@ $is_staff = ($role === 'admin' || $role === 'staff');
                         <i class="bi bi-gear me-1"></i><span data-lang="nav_system">System</span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="product_management.php"><span data-lang="nav_master_data">Master Data</span></a></li>
+                        <li><a class="dropdown-item" href="product_management.php"><span data-lang="nav_master_data">Product Management</span></a></li>
                         <li><a class="dropdown-item" href="spoilage_report.php"><span data-lang="nav_spoilage_report">Spoilage Report</span></a></li>
                         <li><a class="dropdown-item" href="spoilage_list.php"><span data-lang="nav_spoilage_list">Spoilage List</span></a></li>
                         <?php if ($is_admin): ?>

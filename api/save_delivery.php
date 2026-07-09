@@ -36,7 +36,7 @@ try {
     }
 
     // 1. Dapatkan maklumat Sekolah (kod sekolah)
-    $stmtSchool = $pdo->prepare("SELECT school_code FROM schools_master WHERE id = ? LIMIT 1");
+    $stmtSchool = $pdo->prepare("SELECT school_code FROM schools WHERE id = ? LIMIT 1");
     $stmtSchool->execute([$school_id]);
     $school_code = $stmtSchool->fetchColumn();
 
@@ -117,11 +117,25 @@ try {
     $stmtUpdateDO->execute([$do_number, $delivery_id]);
 
     // Merekodkan transaksi palet keluar ke dalam lejar pallet (pallet_ledger)
-    if (($pallets_red + $pallets_green + $pallets_orange) > 0) {
-        $stmtLedger = $pdo->prepare("INSERT INTO pallet_ledger 
-            (transaction_date, hd_id, transaction_type, qty_red, qty_green, qty_orange, qty_black, reference_do) 
-            VALUES (NOW(), ?, 'OUT', ?, ?, ?, 0, ?)");
-        $stmtLedger->execute([$hd_id, $pallets_red, $pallets_green, $pallets_orange, $do_number]);
+    $pallet_out_map = [
+        'red' => $pallets_red,
+        'lhp' => $pallets_green,
+        'orange' => $pallets_orange
+    ];
+
+    $stmtLedger = $pdo->prepare("INSERT INTO pallet_ledger 
+        (transaction_date, transaction_type, pallet_code, qty, reference_no, notes) 
+        VALUES (NOW(), 'OUT', ?, ?, ?, ?)");
+
+    foreach ($pallet_out_map as $p_code => $p_qty) {
+        if ($p_qty > 0) {
+            $stmtLedger->execute([
+                $p_code,
+                $p_qty,
+                $do_number,
+                "School Delivery (DO ID: $delivery_id, HD: $hd_id)"
+            ]);
+        }
     }
 
     // 6. Rekod item DO ke delivery_items_pss

@@ -22,7 +22,18 @@ $action = $_GET['action'] ?? '';
 
 // --- 1. GET SCHOOL DATA ---
 if ($action == 'get_schools') {
-    $stmt = $pdo->query("SELECT * FROM mms_logistik ORDER BY plan_date ASC, name ASC");
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $role = $_SESSION['role'] ?? '';
+    $username = $_SESSION['username'] ?? '';
+
+    if ($role === 'dealer') {
+        $stmt = $pdo->prepare("SELECT * FROM mms_logistik WHERE LOWER(dealer) = LOWER(?) ORDER BY plan_date ASC, name ASC");
+        $stmt->execute([$username]);
+    } else {
+        $stmt = $pdo->query("SELECT * FROM mms_logistik ORDER BY plan_date ASC, name ASC");
+    }
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     exit;
 }

@@ -84,19 +84,43 @@ try {
     ]);
     $inbound_id = $pdo->lastInsertId();
 
+    // Record to pallet_ledger (Dynamic)
+    $pallet_totals_map = [
+        'red' => $total_red,
+        'orange' => $total_orange,
+        'black' => $total_black,
+        'ffm' => $total_ffm,
+        'lhp' => $total_lhp,
+        'plain' => $total_plain
+    ];
+
+    $stmtPalletLedger = $pdo->prepare("INSERT INTO pallet_ledger 
+        (transaction_date, transaction_type, pallet_code, qty, reference_no, notes) 
+        VALUES (?, 'IN', ?, ?, ?, ?)");
+
+    foreach ($pallet_totals_map as $p_code => $p_qty) {
+        if ($p_qty > 0) {
+            $t_time = empty($arrival) ? date('H:i:s') : $arrival . ':00';
+            $stmtPalletLedger->execute([
+                $recv_date . ' ' . $t_time,
+                $p_code,
+                $p_qty,
+                $supplier_do,
+                "Received via Multi-Receive (GRN ID: $inbound_id)"
+            ]);
+        }
+    }
+
     // INSERT ITEMS
     if (empty($items)) throw new Exception("No items found.");
     $count = 0;
 
-    $pallet_map = [
-        'none' => 'No Pallet',
-        'plain' => 'Plain',
-        'red' => 'Loscam Red',
-        'lhp' => 'LHP Green',
-        'orange' => 'FFM Orange',
-        'ffm' => 'FFM Green',
-        'black' => 'Plastic Black'
-    ];
+    // Fetch pallet map dynamically
+    $pallet_map = ['none' => 'No Pallet'];
+    $db_pallets = $pdo->query("SELECT name, code FROM pallet_types")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($db_pallets as $p) {
+        $pallet_map[strtolower($p['code'])] = $p['name'];
+    }
 
     foreach ($items as $item) {
         $prod_id   = $item['product_id'];

@@ -30,6 +30,7 @@ $full_name = trim($_POST['full_name'] ?? '');
 $password  = trim($_POST['password'] ?? '');
 $role      = trim($_POST['role'] ?? 'dealer');
 $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
+$hd_id     = ($role === 'dealer' && !empty($_POST['hd_id'])) ? (int)$_POST['hd_id'] : null;
 
 if (empty($username) || empty($full_name) || empty($role)) {
     http_response_code(400);
@@ -43,23 +44,23 @@ try {
         if (!empty($password)) {
             // Jika kata laluan diisi, kemaskini sekali
             $stmt = $pdo->prepare("
-                UPDATE users_hub 
-                SET username = ?, full_name = ?, password_hash = ?, role = ?, is_active = ?
+                UPDATE users 
+                SET username = ?, full_name = ?, password_hash = ?, role = ?, is_active = ?, hd_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$username, $full_name, $password, $role, $is_active, $user_id]);
+            $stmt->execute([$username, $full_name, $password, $role, $is_active, $hd_id, $user_id]);
         } else {
             // Jika kata laluan kosong, kekalkan yang asal
             $stmt = $pdo->prepare("
-                UPDATE users_hub 
-                SET username = ?, full_name = ?, role = ?, is_active = ?
+                UPDATE users 
+                SET username = ?, full_name = ?, role = ?, is_active = ?, hd_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$username, $full_name, $role, $is_active, $user_id]);
+            $stmt->execute([$username, $full_name, $role, $is_active, $hd_id, $user_id]);
         }
 
         if (function_exists('log_system_activity')) {
-            log_system_activity("Updated User", "users_hub", $user_id, "Mengemas kini pengguna '$username' (Role: $role, Aktif: $is_active).");
+            log_system_activity("Updated User", "users", $user_id, "Mengemas kini pengguna '$username' (Role: $role, Aktif: $is_active).");
         }
         echo json_encode(['success' => 'Maklumat pengguna berjaya dikemaskini.']);
     } else {
@@ -71,7 +72,7 @@ try {
         }
 
         // Semak sama ada username telah digunakan
-        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM users_hub WHERE username = ?");
+        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
         $stmtCheck->execute([$username]);
         if ($stmtCheck->fetchColumn() > 0) {
             http_response_code(400);
@@ -80,14 +81,14 @@ try {
         }
 
         $stmtInsert = $pdo->prepare("
-            INSERT INTO users_hub (username, full_name, password_hash, role, is_active) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO users (username, full_name, password_hash, role, is_active, hd_id) 
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $stmtInsert->execute([$username, $full_name, $password, $role, $is_active]);
+        $stmtInsert->execute([$username, $full_name, $password, $role, $is_active, $hd_id]);
         $new_id = $pdo->lastInsertId();
 
         if (function_exists('log_system_activity')) {
-            log_system_activity("Created User", "users_hub", $new_id, "Mendaftar pengguna baharu '$username' (Role: $role, Aktif: $is_active).");
+            log_system_activity("Created User", "users", $new_id, "Mendaftar pengguna baharu '$username' (Role: $role, Aktif: $is_active).");
         }
         echo json_encode(['success' => 'Pengguna baharu berjaya didaftarkan.']);
     }

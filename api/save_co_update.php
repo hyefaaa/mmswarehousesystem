@@ -1,6 +1,6 @@
 <?php
 // api/save_co_update.php
-// UPDATED: Now uses shared PDO config and matches schools_master schema
+// UPDATED: Now uses shared PDO config and matches schools schema
 
 header('Content-Type: application/json');
 ini_set('display_errors', 0); // Suppress HTML errors in JSON response
@@ -41,8 +41,8 @@ $col_map = [];
 
 try {
     // PREPARE STATEMENTS ONCE (Optimization)
-    // We check against 'schools_master' because that is the correct table name in your system
-    $check_stmt = $pdo->prepare("SELECT id FROM schools_master WHERE school_code = ?");
+    // We check against 'schools' because that is the correct table name in your system
+    $check_stmt = $pdo->prepare("SELECT id FROM schools WHERE school_code = ?");
     
     $insert_stmt = $pdo->prepare("INSERT INTO co_entitlements 
             (school_code, contract_no, co_no, month, student_count) 

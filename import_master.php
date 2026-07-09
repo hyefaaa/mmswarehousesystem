@@ -22,12 +22,21 @@ if (!file_exists($csvFile)) {
 echo "<h3>Starting Master Data Import...</h3>";
 
 try {
-    // 1. CLEAR DATA FIRST (Outside Transaction)
-    // TRUNCATE causes an implicit commit, so we do it before starting the transaction.
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0"); // Disable safety checks temporarily
-    $pdo->exec("TRUNCATE TABLE master_schools");
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
-    echo "Old master data cleared successfully.<br>";
+    // 1. Fetch all HDs for mapping
+    $hds = $pdo->query("SELECT id, name FROM hds")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    function findHdId($csv_name, $db_hds) {
+        $csv_name = strtoupper(trim($csv_name));
+        if (empty($csv_name)) return null;
+
+        foreach ($db_hds as $hd_id => $db_name) {
+            $db_name_upper = strtoupper($db_name);
+            if ($db_name_upper === $csv_name) return $hd_id;
+            if (strpos($csv_name, $db_name_upper) !== false) return $hd_id;
+            if (strpos($db_name_upper, $csv_name) !== false) return $hd_id;
+        }
+        return null; 
+    }
 
     // 2. OPEN FILE
     $handle = fopen($csvFile, "r");
@@ -37,9 +46,15 @@ try {
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("
-        INSERT INTO master_schools 
-        (kod_sekolah, nama_sekolah, alamat, no_tel, nama_hd, daerah_master) 
+        INSERT INTO schools 
+        (school_code, school_name, address, no_tel, default_hd_id, zone_code) 
         VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        school_name = VALUES(school_name),
+        address = VALUES(address),
+        no_tel = VALUES(no_tel),
+        default_hd_id = VALUES(default_hd_id),
+        zone_code = VALUES(zone_code)
     ");
 
     // Get Headers
@@ -72,7 +87,10 @@ try {
         $nama   = trim($row[$colMap['NAMA SEKOLAH']]);
         $daerah = trim($row[$colMap['DAERAH']]);
         $notel  = trim($row[$colMap['NO TEL']]);
-        $hd     = trim($row[$colMap['Nama HD']]);
+        $hdName = trim($row[$colMap['Nama HD']]);
+
+        // Find HD ID
+        $hd_id = findHdId($hdName, $hds);
 
         // Construct Address
         $alamatPart = $row[$colMap['ALAMAT']] ?? '';
@@ -83,7 +101,7 @@ try {
         $fullAddress = "$alamatPart, $poskod $bandar, $negeri";
         $fullAddress = trim(preg_replace('/,+/', ',', $fullAddress), ', ');
 
-        $stmt->execute([$kod, $nama, $fullAddress, $notel, $hd, $daerah]);
+        $stmt->execute([$kod, $nama, $fullAddress, $notel, $hd_id, $daerah]);
         $count++;
     }
 

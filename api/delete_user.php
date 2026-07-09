@@ -34,7 +34,7 @@ if ($user_id <= 0) {
 
 try {
     // Cari nama pengguna terlebih dahulu untuk tujuan pembalakan audit
-    $stmtUser = $pdo->prepare("SELECT username FROM users_hub WHERE id = ?");
+    $stmtUser = $pdo->prepare("SELECT username FROM users WHERE id = ?");
     $stmtUser->execute([$user_id]);
     $username = $stmtUser->fetchColumn();
 
@@ -52,11 +52,11 @@ try {
     }
 
     // Padam rekod
-    $stmtDelete = $pdo->prepare("DELETE FROM users_hub WHERE id = ?");
+    $stmtDelete = $pdo->prepare("DELETE FROM users WHERE id = ?");
     $stmtDelete->execute([$user_id]);
 
     if (function_exists('log_system_activity')) {
-        log_system_activity("Deleted User", "users_hub", $user_id, "Memadam akaun pengguna '$username' daripada sistem.");
+        log_system_activity("Deleted User", "users", $user_id, "Memadam akaun pengguna '$username' daripada sistem.");
     }
     echo json_encode(['success' => "Akaun '$username' berjaya dipadam."]);
 

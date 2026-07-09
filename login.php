@@ -25,8 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($username) && !empty($password)) {
         try {
-            // Carian pengguna di dalam users_hub
-            $stmt = $pdo->prepare("SELECT * FROM users_hub WHERE username = ? AND is_active = 1 LIMIT 1");
+            // Carian pengguna di dalam users
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? AND is_active = 1 LIMIT 1");
             $stmt->execute([$username]);
             $user = $stmt->fetch();
 
@@ -38,9 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['username']  = $user['username'];
                     $_SESSION['role']      = $user['role']; // cth: 'admin', 'dealer', dll.
                     $_SESSION['full_name'] = $user['full_name'];
+                    $_SESSION['hd_id']     = $user['hd_id'] ?? null;
 
                     if (function_exists('log_system_activity')) {
-                        log_system_activity("User Logged In", "users_hub", $user['id'], "Pengguna '{$user['username']}' berjaya log masuk dari IP {$_SERVER['REMOTE_ADDR']}.");
+                        log_system_activity("User Logged In", "users", $user['id'], "Pengguna '{$user['username']}' berjaya log masuk dari IP {$_SERVER['REMOTE_ADDR']}.");
                     }
 
                     header('Location: index.php');

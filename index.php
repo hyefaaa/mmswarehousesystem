@@ -377,10 +377,10 @@ require_once 'includes/header.php';
 
     <div class="row g-4">
         <!-- SEKSYEN 1: GUDANG & INVENTORI -->
+        <?php if ($is_staff): ?>
         <div class="col-xl-3 col-md-6">
             <div class="section-title" data-lang="sec_stock_receiving">Gudang & Inventori</div>
             
-            <?php if ($is_staff): ?>
             <a href="receiving_multi.php" class="nav-card">
                 <div class="icon-box bg-primary text-white"><i class="bi bi-boxes"></i></div>
                 <div class="content">
@@ -409,12 +409,8 @@ require_once 'includes/header.php';
                     <span class="desc" data-lang="card_stock_take_d">Audit fizikal stok & penyelarasan inventori.</span>
                 </div>
             </a>
-            <?php else: ?>
-            <div class="p-3 text-muted text-center border rounded-3 bg-light bg-opacity-50 small">
-                <i class="bi bi-lock me-1"></i> Akses dihadkan untuk Staff sahaja
-            </div>
-            <?php endif; ?>
         </div>
+        <?php endif; ?>
 
         <!-- SEKSYEN 2: LOGISTIK & OUTBOUND -->
         <div class="col-xl-3 col-md-6">
@@ -457,6 +453,7 @@ require_once 'includes/header.php';
                     <span class="desc" data-lang="card_pss_hub_d">Pusat kawalan sekolah, trip & import data.</span>
                 </div>
             </a>
+            <?php if ($is_staff): ?>
             <a href="import_co_ui.php" class="nav-card">
                 <div class="icon-box bg-warning text-dark"><i class="bi bi-file-earmark-excel"></i></div>
                 <div class="content">
@@ -478,13 +475,14 @@ require_once 'includes/header.php';
                     <span class="desc" data-lang="import_master_desc">Kemas kini data sekolah & kontrak master.</span>
                 </div>
             </a>
+            <?php endif; ?>
         </div>
 
+        <?php if ($is_staff): ?>
         <!-- SEKSYEN 4: AUDIT, PENTADBIR & LOG -->
         <div class="col-xl-3 col-md-6">
             <div class="section-title" data-lang="sec_reports_audit">Audit, Pentadbir & Log</div>
             
-            <?php if ($is_staff): ?>
             <a href="reconcile.php" class="nav-card">
                 <div class="icon-box bg-warning-subtle text-warning-emphasis"><i class="bi bi-shield-shaded"></i></div>
                 <div class="content">
@@ -492,7 +490,6 @@ require_once 'includes/header.php';
                     <span class="desc" data-lang="card_reconcile_d">Audit bil fizikal lori vs rekod stok keluar.</span>
                 </div>
             </a>
-            <?php endif; ?>
 
             <a href="spoilage_report.php" class="nav-card">
                 <div class="icon-box bg-danger text-white"><i class="bi bi-patch-exclamation"></i></div>
@@ -540,6 +537,7 @@ require_once 'includes/header.php';
             </a>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 

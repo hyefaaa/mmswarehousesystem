@@ -12,12 +12,53 @@ if (!isset($_GET['lot_no'])) {
 $lot = trim($_GET['lot_no']);
 $category = isset($_GET['category']) ? trim($_GET['category']) : 'UHT';
 
+// Helper function to extract and clean barcode/QR code variants from scanned input
+function getCleanedCodes($input) {
+    $codes = [];
+    $input = trim($input);
+    if ($input === '') return $codes;
+    
+    // 1. Add raw input
+    $codes[] = $input;
+    
+    // 2. If it contains slashes, get the first part (component 1)
+    if (strpos($input, '/') !== false) {
+        $parts = explode('/', $input);
+        $part0 = trim($parts[0]);
+        $codes[] = $part0;
+        
+        // Strip GGGITN/GGGITNO prefix from first part
+        $stripped0 = preg_replace('/^(?:G{1,3}ITN[O0]?)/i', '', $part0);
+        $codes[] = $stripped0;
+    }
+    
+    // 3. Strip GGGITN/GGGITNO prefix from raw input itself
+    $stripped_raw = preg_replace('/^(?:G{1,3}ITN[O0]?)/i', '', $input);
+    $codes[] = $stripped_raw;
+    
+    // 4. Extract characters between GGGITN and /BAN or similar patterns
+    if (preg_match('/GG{1,2}ITN(.*?)\//i', $input, $m)) {
+        $codes[] = trim($m[1]);
+        $codes[] = preg_replace('/^[O0]/i', '', trim($m[1]));
+    }
+    if (preg_match('/GG{1,2}ITN(.*?)$/i', $input, $m)) {
+        $codes[] = trim($m[1]);
+        $codes[] = preg_replace('/^[O0]/i', '', trim($m[1]));
+    }
+    
+    // Clean unique values, filter out empty ones
+    $codes = array_filter(array_unique(array_map('trim', $codes)));
+    return array_values($codes);
+}
+
 // Sediakan struktur data lalai (Default Response)
 $response = [
     'status' => 'success',
     'data' => [
         'product_id'   => 0,
         'product_code' => '',
+        'category'     => '',
+        'pack_size'    => 0,
         'expiry_date'  => '',
         'batch'        => '',
         'qty_pieces'   => 0,
@@ -31,25 +72,25 @@ $db_matched = false;
 try {
     require_once 'config/db.php';
     
-    // Extract unique ID from QR code format if applicable (starts after GGGITN and before /BAN)
-    $extracted_qrcode = '';
-    if (preg_match('/GG{1,2}ITN(.*?)\/BAN/i', $lot, $m)) {
-        $extracted_qrcode = trim($m[1]);
-    }
+    $search_codes = getCleanedCodes($lot);
     
-    if ($extracted_qrcode !== '') {
-        $stmt = $pdo->prepare("SELECT id, name, barcode, qrcode FROM products WHERE (qrcode = ? OR barcode = ?) AND is_active = 1 LIMIT 1");
-        $stmt->execute([$extracted_qrcode, $lot]);
-    } else {
-        $stmt = $pdo->prepare("SELECT id, name, barcode, qrcode FROM products WHERE (barcode = ? OR qrcode = ?) AND is_active = 1 LIMIT 1");
-        $stmt->execute([$lot, $lot]);
-    }
-    
-    $prod = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($prod) {
-        $response['data']['product_id'] = (int)$prod['id'];
-        $response['data']['product_code'] = !empty($prod['qrcode']) ? $prod['qrcode'] : (!empty($prod['barcode']) ? $prod['barcode'] : '');
-        $db_matched = true;
+    if (!empty($search_codes)) {
+        // Build placeholders
+        $placeholders = implode(',', array_fill(0, count($search_codes), '?'));
+        
+        // Prepare query checking both barcode and qrcode fields
+        $params = array_merge($search_codes, $search_codes);
+        $stmt = $pdo->prepare("SELECT id, name, barcode, qrcode, category, pack_size FROM products WHERE (barcode IN ($placeholders) OR qrcode IN ($placeholders)) AND is_active = 1 LIMIT 1");
+        $stmt->execute($params);
+        
+        $prod = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($prod) {
+            $response['data']['product_id'] = (int)$prod['id'];
+            $response['data']['product_code'] = !empty($prod['qrcode']) ? $prod['qrcode'] : (!empty($prod['barcode']) ? $prod['barcode'] : '');
+            $response['data']['category'] = !empty($prod['category']) ? $prod['category'] : '';
+            $response['data']['pack_size'] = !empty($prod['pack_size']) ? (int)$prod['pack_size'] : 0;
+            $db_matched = true;
+        }
     }
 } catch (Exception $e) {
     // Ignore
@@ -60,114 +101,6 @@ if ($db_matched && strpos($lot, '/') === false) {
     exit;
 }
 
-// Product Mapping from scanned code to DB product names
-$product_mapping = [
-    'CW61P4' => [
-        'default' => 'Chocomalt 800g'
-    ],
-    'CW6CH' => [
-        125 => 'UHT Yarra Chocolate 125ml',
-        200 => 'UHT FF Yarra Chocolate 200ml',
-        1000 => 'UHT Yarra Chocolate 1l'
-    ],
-    'CW6SB' => [
-        125 => 'UHT Yarra Strawberry 125ml',
-        200 => 'UHT FF Yarra Strawberry 200ml',
-        1000 => 'UHT Yarra Strawberry 1l'
-    ],
-    'CW6FC' => [
-        'school' => 'UHT Yarra Full Cream (School) 200ml',
-        125 => 'UHT Yarra Full Cream 125ml',
-        200 => 'UHT FF Yarra Full Cream 200ml',
-        1000 => 'UHT Yarra Full Cream 1l'
-    ],
-    'YD1SB' => [
-        'UHT' => [
-            125 => 'UHT FF Yog Strawberry 125ml',
-            200 => 'UHT FF Yog Strawberry 200ml'
-        ],
-        'PST' => [
-            200 => 'PST Yogurt Strawberry 200ml'
-        ]
-    ],
-    'YD1MB' => [
-        'UHT' => [
-            125 => 'UHT FF Yog Mix Berry 125ml',
-            200 => 'UHT FF Yog Mix Berry 200ml'
-        ],
-        'PST' => [
-            200 => 'PST Yogurt Mixberries 200ml'
-        ]
-    ],
-    'YD1MG' => [
-        'UHT' => [
-            125 => 'UHT FF Yog Mango 125ml',
-            200 => 'UHT FF Yog Mango 200ml'
-        ],
-        'PST' => [
-            200 => 'PST Yogurt Mango 200ml'
-        ]
-    ],
-    'CW1KU' => [
-        'UHT' => [
-            125 => 'UHT FF Kurma 125ml',
-            200 => 'UHT FF Kurma 200ml',
-            1000 => 'UHT FF Kurma 1l'
-        ],
-        'PST' => [
-            200 => 'PST Kurma 200ml',
-            1000 => 'PST Kurma Milk 1L',
-            2000 => 'PST Kurma 2L'
-        ]
-    ],
-    'CW1CO' => [
-        'UHT' => [
-            200 => 'UHT FF Caf'
-        ],
-        'PST' => [
-            200 => 'PST Cafe Latte 200ml'
-        ]
-    ],
-    'CW1CH' => [
-        'UHT' => [
-            125 => 'UHT FF Chocolate 125ml',
-            200 => 'UHT FF Chocolate 200ml',
-            1000 => 'UHT FF Chocolate 1l'
-        ],
-        'PST' => [
-            200 => 'PST Chocolate 200ml',
-            1000 => 'PST Chocolate 1L'
-        ]
-    ],
-    'CW1FC' => [
-        'UHT' => [
-            125 => 'UHT FF Fresh 125ml',
-            200 => 'UHT FF Fresh 200ml',
-            1000 => 'UHT FF Fresh 1l'
-        ],
-        'PST' => [
-            568 => 'PST Pure Fresh 568ml',
-            1000 => 'PST Pure Fresh Milk 1L',
-            2000 => 'PST Pure Fresh Milk 2L'
-        ]
-    ],
-    'CW1BA' => [
-        'UHT' => [
-            125 => 'UHT FF Banana 125ml',
-            200 => 'UHT FF Banana 200ml'
-        ],
-        'PST' => [
-            700 => 'PST Banana 700ml'
-        ]
-    ],
-    'CW1CT' => [
-        'UHT' => [
-            200 => 'UHT FF Soy Chocolate 200ml',
-            1000 => 'UHT FF Soy Chocolate 1l'
-        ]
-    ]
-];
-
 // Check if new format (contains /)
 if (strpos($lot, '/') !== false) {
     $parts = explode('/', $lot);
@@ -176,15 +109,26 @@ if (strpos($lot, '/') !== false) {
     $prod_code = '';
     $size = 0;
     $suffix = '';
-    $known_codes = implode('|', array_keys($product_mapping));
-    if (preg_match('/^(?:G{2,3}ITN[O0]\d*)(' . $known_codes . ')-?(\d+)([A-Z])(\d+)([A-Z])$/i', trim($parts[0]), $m1)) {
+    if (preg_match('/^(?:G{1,3}ITN[O0]?\d*)([A-Z0-9]+)-?(\d+)([A-Z])(\d+)([A-Z])$/i', trim($parts[0]), $m1)) {
         $prod_code = strtoupper($m1[1]);
         $size      = (int)$m1[2];
         $packaging = strtoupper($m1[3]);
         $pack_size = (int)$m1[4];
         $suffix    = strtoupper($m1[5]);
         
-        $response['data']['product_code'] = $prod_code . '-' . $m1[2] . $packaging . $m1[4] . $suffix;
+        $response['data']['pack_size'] = $pack_size;
+        
+        if (empty($response['data']['product_code'])) {
+            $response['data']['product_code'] = $prod_code . '-' . $m1[2] . $packaging . $m1[4] . $suffix;
+        }
+    } else {
+        if (empty($response['data']['product_code'])) {
+            $response['data']['product_code'] = preg_replace('/^(?:G{1,3}ITN[O0]?)/i', '', trim($lot));
+        }
+        if (preg_match('/-[0-9]+[A-Z](\d+)([A-Z])$/i', trim($lot), $suffix_m)) {
+            $response['data']['pack_size'] = (int)$suffix_m[1];
+            $suffix = strtoupper($suffix_m[2]);
+        }
     }
     
     // 2. Parse Component 2 (Date, Batch, Pallet)
@@ -245,39 +189,6 @@ if (strpos($lot, '/') !== false) {
             $response['data']['qty_pieces'] = (int)$qty_m[1];
         }
     }
-    
-    // 4. Resolve Product ID using mapping (only if not already resolved by DB barcode/qrcode)
-    if ($response['data']['product_id'] === 0) {
-        $target_name = '';
-        if (isset($product_mapping[$prod_code])) {
-            $rules = $product_mapping[$prod_code];
-            if (isset($rules['UHT']) || isset($rules['PST'])) {
-                $cat_key = ($category === 'PST') ? 'PST' : 'UHT';
-                $rules = isset($rules[$cat_key]) ? $rules[$cat_key] : [];
-            }
-            if (($category === 'PSS') && isset($rules['school'])) {
-                $target_name = $rules['school'];
-            } elseif (isset($rules[$size])) {
-                $target_name = $rules[$size];
-            } elseif (isset($rules['default'])) {
-                $target_name = $rules['default'];
-            }
-        }
-        
-        if ($target_name) {
-            try {
-                require_once 'config/db.php';
-                $stmt = $pdo->prepare("SELECT id FROM products WHERE name LIKE ? AND is_active = 1 LIMIT 1");
-                $stmt->execute(["%" . $target_name . "%"]);
-                $prod = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($prod) {
-                    $response['data']['product_id'] = (int)$prod['id'];
-                }
-            } catch (Exception $e) {
-                // Ignore DB errors
-            }
-        }
-    }
 } else {
     // Old format fallback
     if (preg_match('/QTY(\d+)/i', $lot, $matches)) {
@@ -299,23 +210,28 @@ if (strpos($lot, '/') !== false) {
     }
     
     $prod_code = '';
-    $known_codes = implode('|', array_keys($product_mapping));
     // Check old format
     if (preg_match('/(\d{4}[A-Z0-9]*)-?\d{6}-?MF[A-Z]/i', $lot, $matches)) {
         $prod_code = $matches[1];
-        $response['data']['product_code'] = $prod_code; 
+        if (empty($response['data']['product_code'])) {
+            $response['data']['product_code'] = $prod_code; 
+        }
     }
     // Check new format without slashes but with full product details
-    elseif (preg_match('/(?:G{2,3}ITN[O0]\d*)(' . $known_codes . ')-?(\d+)([A-Z])(\d+)([A-Z])/i', $lot, $matches)) {
+    elseif (preg_match('/^(?:G{1,3}ITN[O0]?\d*)([A-Z0-9]+)-?(\d+)([A-Z])(\d+)([A-Z])/i', $lot, $matches)) {
         $prod_code = strtoupper($matches[1]);
         $size = (int)$matches[2];
         $suffix = strtoupper($matches[5]);
-        $response['data']['product_code'] = $prod_code . '-' . $matches[2] . strtoupper($matches[3]) . $matches[4] . $suffix;
+        if (empty($response['data']['product_code'])) {
+            $response['data']['product_code'] = $prod_code . '-' . $matches[2] . strtoupper($matches[3]) . $matches[4] . $suffix;
+        }
     }
     // Check old format (just prefix)
-    elseif (preg_match('/(?:G{2,3}ITN[O0]\d*)(' . $known_codes . ')/i', $lot, $matches)) {
-        $prod_code = strtoupper($matches[1]);
-        $response['data']['product_code'] = $prod_code; 
+    elseif (preg_match('/^(?:G{1,3}ITN[O0]?)(.*)/i', $lot, $matches)) {
+        $prod_code = strtoupper(trim($matches[1]));
+        if (empty($response['data']['product_code'])) {
+            $response['data']['product_code'] = $prod_code; 
+        }
     }
     
     if (preg_match('/MF([A-Z])(\d+)/i', $lot, $matches)) {
@@ -334,42 +250,6 @@ if (strpos($lot, '/') !== false) {
         $p_num    = (int)$matches[2];
         $response['data']['pallet_raw_code'] = $p_prefix . $matches[2];
         $response['data']['pallet_id_short']  = $p_prefix . $p_num;
-    }
-    
-    if ($response['data']['product_id'] === 0 && $prod_code) {
-        $target_name = '';
-        if (isset($product_mapping[$prod_code])) {
-            $rules = $product_mapping[$prod_code];
-            if (isset($rules['UHT']) || isset($rules['PST'])) {
-                $cat_key = ($category === 'PST') ? 'PST' : 'UHT';
-                $rules = isset($rules[$cat_key]) ? $rules[$cat_key] : [];
-            }
-            if (($category === 'PSS') && isset($rules['school'])) {
-                $target_name = $rules['school'];
-            } elseif (isset($size) && isset($rules[$size])) {
-                $target_name = $rules[$size];
-            } elseif (isset($rules['default'])) {
-                $target_name = $rules['default'];
-            }
-        }
-        
-        try {
-            require_once 'config/db.php';
-            if ($target_name) {
-                $stmt = $pdo->prepare("SELECT id FROM products WHERE name LIKE ? AND is_active = 1 LIMIT 1");
-                $stmt->execute(["%" . $target_name . "%"]);
-            } else {
-                $numericSize = preg_replace('/[^0-9]/', '', $prod_code);
-                $stmt = $pdo->prepare("SELECT id FROM products WHERE (name LIKE ? OR name LIKE ?) AND is_active = 1 LIMIT 1");
-                $stmt->execute(["%" . $prod_code . "%", "%" . $numericSize . "%"]);
-            }
-            $prod = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($prod) {
-                $response['data']['product_id'] = (int)$prod['id'];
-            }
-        } catch (Exception $e) {
-            // Ignore
-        }
     }
 }
 

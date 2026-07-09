@@ -51,7 +51,8 @@ if (!function_exists('log_system_activity')) {
     }
 }
 
-// Auto-migration: Ensure qrcode column exists in products table
+// Auto-migration has completed, commenting out to save redundant DB queries on every request.
+/*
 try {
     $check_column = $pdo->query("SHOW COLUMNS FROM products LIKE 'qrcode'")->fetch();
     if (!$check_column) {
@@ -60,4 +61,5 @@ try {
 } catch (Exception $e) {
     // Silently ignore if table doesn't exist yet
 }
+*/
 ?>
