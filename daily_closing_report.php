@@ -174,6 +174,7 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
+                <a href="daily_closing_history.php" class="btn btn-warning text-dark fw-bold"><i class="bi bi-grid-3x3-gap-fill me-1"></i> View History Matrix</a>
                 <button type="button" class="btn btn-info text-white fw-bold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print Sheet</button>
             </div>
         </div>
