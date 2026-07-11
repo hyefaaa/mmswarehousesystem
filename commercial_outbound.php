@@ -4,8 +4,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
-// Fetch Commercial Products (Excluding PSS for internal use)
-$products = $pdo->query("SELECT id, name, category, pack_size FROM products WHERE category != 'PSS' AND is_active=1 ORDER BY name ASC")->fetchAll();
+// Fetch All Active Products (Including PSS)
+$products = $pdo->query("SELECT id, name, category, pack_size FROM products WHERE is_active=1 ORDER BY name ASC")->fetchAll();
 
 
 $page_title = 'Commercial Outbound | MMS LOGISTIK';
@@ -162,6 +162,23 @@ require_once 'includes/header.php';
         font-weight: 600;
         background-color: #fef2f2;
     }
+    
+    /* Select2 customizations to look clean and neat */
+    .select2-container--default .select2-selection--single {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        height: 42px !important;
+        padding: 6px 12px !important;
+        background-color: #ffffff !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        line-height: 28px !important;
+    }
 </style>
 
 <div class="page-header mb-4">
@@ -293,6 +310,18 @@ require_once 'includes/header.php';
 <script>
     let rowCount = 1;
     const products = <?php echo json_encode($products); ?>;
+
+    function initSelect2() {
+        $('.product-select:not(.select2-hidden-accessible)').select2({
+            placeholder: "-- Choose Product --",
+            allowClear: true,
+            width: '100%'
+        });
+    }
+
+    $(document).ready(function() {
+        initSelect2();
+    });
     
     function addRow() {
         let options = '<option value="">-- Choose Product --</option>';
@@ -318,6 +347,7 @@ require_once 'includes/header.php';
         `;
         document.getElementById('outBody').insertAdjacentHTML('beforeend', html);
         rowCount++;
+        initSelect2();
     }
 
     function removeRow(btn) {
@@ -759,6 +789,7 @@ require_once 'includes/header.php';
         const row = document.getElementById('outBody').lastElementChild;
         $(row).find('.product-select').trigger('change');
         rowCount++;
+        initSelect2();
     }
 
     document.getElementById('outboundForm').onsubmit = function(e) {
