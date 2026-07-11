@@ -544,11 +544,88 @@ require_once 'includes/header.php';
             <?php endif; ?>
         </div>
         <?php else: ?>
-        <!-- DEALER / HD VIEW: 3 Symmetric PSS-focused cards -->
-        <div class="col-12 text-center mb-3">
+        <!-- DEALER / HD VIEW: PSS Dashboard with Live Analytics -->
+
+        <!-- Section Title -->
+        <div class="col-12 text-center mb-2">
             <div class="section-title text-center justify-content-center d-inline-block" style="border-left:none; border-bottom:4px solid #0ea5e9; padding-left:0; padding-bottom:8px; font-weight:800; font-size:1.1rem; color:#0f172a; text-transform:uppercase; letter-spacing:1px;" data-lang="sec_system_pss">
                 Pusat Kawalan Operasi PSS
             </div>
+        </div>
+
+        <!-- Real-time Progress Bar -->
+        <div class="col-12">
+            <div style="background:#e2e8f0; border-radius:30px; height:38px; position:relative; overflow:hidden; box-shadow:inset 0 2px 4px rgba(0,0,0,0.06);">
+                <div id="hdOverallBar" style="background:linear-gradient(90deg,#10b981,#34d399); height:100%; border-radius:30px; transition:width 0.8s cubic-bezier(0.4,0,0.2,1); width:0%;"></div>
+                <div id="hdOverallText" style="position:absolute; width:100%; text-align:center; top:8px; font-weight:800; font-size:0.9rem; color:#0f172a; z-index:2; text-shadow:0 1px 1px rgba(255,255,255,0.6);">Memuatkan data PSS...</div>
+            </div>
+        </div>
+
+        <!-- Mini Stats Row -->
+        <div class="col-md-4">
+            <div class="card p-3 mt-2 border-0 shadow-sm" style="border-left:6px solid #06b6d4 !important; border-radius:14px;">
+                <div class="stat-label">Jumlah Sekolah</div>
+                <div class="stat-value" id="hdStatSchools">—</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 mt-2 border-0 shadow-sm" style="border-left:6px solid #10b981 !important; border-radius:14px;">
+                <div class="stat-label">Selesai Dihantar</div>
+                <div class="stat-value text-success" id="hdStatDelivered">—</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 mt-2 border-0 shadow-sm" style="border-left:6px solid #f59e0b !important; border-radius:14px;">
+                <div class="stat-label">Jumlah Karton</div>
+                <div class="stat-value text-warning" id="hdStatCartons">—</div>
+            </div>
+        </div>
+
+        <!-- Analytics Table -->
+        <div class="col-12 mt-3">
+            <div style="border:2px solid #3b82f6; border-radius:16px; padding:24px; background:#fff; box-shadow:0 4px 6px -1px rgba(59,130,246,0.06);">
+                <h5 class="fw-bold mb-3" style="color:#2563eb;"><i class="bi bi-bar-chart-line-fill me-2"></i>Analytics — Kemajuan Penghantaran Sekolah PSS</h5>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px; width:130px;">Dealer</th>
+                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px;">Sekolah</th>
+                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px; width:140px;">Progress (%)</th>
+                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px;">Baki Muatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hdDealerSummaryBody">
+                            <tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;">Memuatkan...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERLU / SIAP / BAKI Summary Cards -->
+        <div class="col-md-4">
+            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:6px solid #3b82f6 !important; border-radius:14px;">
+                <div class="stat-label text-primary">🔵 Perlu Dihantar (Total)</div>
+                <div class="stat-value text-primary" id="hdSumPerlu" style="font-size:1.1rem;">—</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:6px solid #10b981 !important; border-radius:14px;">
+                <div class="stat-label text-success">🟢 Siap Dihantar</div>
+                <div class="stat-value text-success" id="hdSumSiap" style="font-size:1.1rem;">—</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:6px solid #ef4444 !important; border-radius:14px;">
+                <div class="stat-label text-danger">🔴 Baki Belum Hantar</div>
+                <div class="stat-value text-danger" id="hdSumBaki" style="font-size:1.1rem;">—</div>
+            </div>
+        </div>
+
+        <!-- Navigation Cards -->
+        <div class="col-12 mt-4">
+            <div class="section-title" data-lang="sec_pss_shortcuts">Navigasi PSS</div>
         </div>
 
         <div class="col-lg-4 col-md-6 col-sm-12">
@@ -556,7 +633,7 @@ require_once 'includes/header.php';
                 <div class="icon-box bg-info text-white"><i class="bi bi-cpu-fill fs-4"></i></div>
                 <div class="content">
                     <span class="title" data-lang="card_pss_hub" style="font-weight:750; font-size:1.05rem; color:#0369a1;">PSS Master Hub</span>
-                    <span class="desc" data-lang="card_pss_hub_d">Pusat kawalan sekolah, trip & import data.</span>
+                    <span class="desc" data-lang="card_pss_hub_d">Pusat kawalan sekolah, trip &amp; import data.</span>
                 </div>
             </a>
         </div>
@@ -576,12 +653,110 @@ require_once 'includes/header.php';
                 <div class="icon-box bg-warning text-dark"><i class="bi bi-file-earmark-spreadsheet fs-4"></i></div>
                 <div class="content">
                     <span class="title" data-lang="import_master_title" style="font-weight:750; font-size:1.05rem; color:#b45309;">Import Master PSS</span>
-                    <span class="desc" data-lang="import_master_desc">Kemas kini data sekolah & kontrak master.</span>
+                    <span class="desc" data-lang="import_master_desc">Kemas kini data sekolah &amp; kontrak master.</span>
                 </div>
             </a>
         </div>
+
+        <script>
+        (function() {
+            const PALLET_SIZE = 144;
+            const currentDealer = '<?= $username ?>';
+            const currentRole   = '<?= $role ?>';
+
+            function calcFullMuatan(ctnTotal, pcsExtra) {
+                let totalCtn = Number(ctnTotal) || 0;
+                let extraPcs = Number(pcsExtra) || 0;
+                if (extraPcs >= 24) { totalCtn += Math.floor(extraPcs / 24); extraPcs = extraPcs % 24; }
+                const pallet = Math.floor(totalCtn / PALLET_SIZE);
+                const bakiCtn = totalCtn % PALLET_SIZE;
+                let r = [];
+                if (pallet > 0) r.push(pallet + ' pallet');
+                if (bakiCtn > 0 || (pallet === 0 && extraPcs === 0)) r.push(bakiCtn + ' ctn');
+                if (extraPcs > 0) r.push(extraPcs + ' pcs');
+                return r.join(' + ');
+            }
+
+            async function loadHDAnalytics() {
+                try {
+                    const res = await fetch('api_pss.php?action=get_schools&dealer=' + currentDealer + '&role=' + currentRole + '&t=' + Date.now());
+                    const raw = await res.json();
+                    const data = Array.isArray(raw) ? raw.map(s => ({...s, isDelivered: s.isDelivered == 1})) : [];
+
+                    // Filter only this dealer's schools
+                    const myData = currentRole === 'dealer' ? data.filter(s => s.dealer === currentDealer) : data;
+
+                    // Overall stats
+                    let totalCtn = 0, doneCtn = 0, totalSch = myData.length, doneSch = 0;
+                    myData.forEach(s => {
+                        const c = Number(s.totalCartons) || 0;
+                        totalCtn += c;
+                        if (s.isDelivered) { doneCtn += c; doneSch++; }
+                    });
+                    const pct = totalCtn ? Math.round((doneCtn / totalCtn) * 100) : 0;
+
+                    document.getElementById('hdOverallBar').style.width = pct + '%';
+                    document.getElementById('hdOverallText').innerText = 'Progres Kitaran: ' + pct + '% (' + doneCtn + '/' + totalCtn + ' Carton)';
+                    document.getElementById('hdStatSchools').innerText = totalSch;
+                    document.getElementById('hdStatDelivered').innerText = doneSch;
+                    document.getElementById('hdStatCartons').innerText = totalCtn;
+
+                    // Per-dealer breakdown
+                    const byDealer = {};
+                    data.forEach(s => {
+                        const d = s.dealer || 'Unknown';
+                        if (!byDealer[d]) byDealer[d] = { total:0, done:0, totalCtn:0, doneCtn:0, extraTotal:0, extraDone:0 };
+                        byDealer[d].total++;
+                        byDealer[d].totalCtn   += Number(s.totalCartons) || 0;
+                        byDealer[d].extraTotal  += Number(s.extraPacks) || 0;
+                        if (s.isDelivered) {
+                            byDealer[d].done++;
+                            byDealer[d].doneCtn  += Number(s.totalCartons) || 0;
+                            byDealer[d].extraDone += Number(s.extraPacks) || 0;
+                        }
+                    });
+
+                    let grandTotalCtn=0, grandDoneCtn=0, grandTotalExtra=0, grandDoneExtra=0;
+                    const tbody = document.getElementById('hdDealerSummaryBody');
+                    tbody.innerHTML = Object.keys(byDealer).sort().map(d => {
+                        const r = byDealer[d];
+                        const p = r.total > 0 ? Math.round((r.done / r.total) * 100) : 0;
+                        const bCtn = r.totalCtn - r.doneCtn;
+                        const bEx  = r.extraTotal - r.extraDone;
+                        const bStr = calcFullMuatan(bCtn, bEx) || '0 ctn';
+                        const complete = bCtn === 0 && bEx === 0;
+                        const pc = p >= 100 ? '#10b981' : p >= 60 ? '#f59e0b' : '#ef4444';
+                        grandTotalCtn   += r.totalCtn;   grandDoneCtn  += r.doneCtn;
+                        grandTotalExtra += r.extraTotal;  grandDoneExtra += r.extraDone;
+                        return '<tr>' +
+                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9;"><strong style="text-transform:uppercase;">' + d + '</strong></td>' +
+                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9;">' +
+                                '<span style="color:#2563eb;font-weight:700;">' + r.done + '/' + r.total + '</span>' +
+                                '<div style="background:#e2e8f0;border-radius:20px;height:8px;margin-top:5px;overflow:hidden;"><div style="background:linear-gradient(90deg,#10b981,#34d399);height:100%;border-radius:20px;width:' + p + '%;"></div></div>' +
+                            '</td>' +
+                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9; color:' + pc + '; font-weight:800;">' + p + '%</td>' +
+                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9; color:' + (complete?'#10b981':'#ef4444') + '; font-weight:700;">(' + bStr + ')</td>' +
+                        '</tr>';
+                    }).join('');
+
+                    // Summary cards
+                    const bTotal = grandTotalCtn - grandDoneCtn;
+                    const bEx    = grandTotalExtra - grandDoneExtra;
+                    document.getElementById('hdSumPerlu').textContent = calcFullMuatan(grandTotalCtn, grandTotalExtra);
+                    document.getElementById('hdSumSiap').textContent  = calcFullMuatan(grandDoneCtn,  grandDoneExtra);
+                    document.getElementById('hdSumBaki').textContent  = calcFullMuatan(bTotal, bEx);
+
+                } catch(e) {
+                    console.error('Gagal memuatkan analytics PSS:', e);
+                }
+            }
+
+            loadHDAnalytics();
+        })();
+        </script>
+
         <?php endif; ?>
     </div>
 </div>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once 'includes/footer.php'; ?>
