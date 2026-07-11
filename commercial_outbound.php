@@ -441,7 +441,24 @@ require_once 'includes/header.php';
         'Fcp800': 'Full Cream Milk Powder 800g',
         'cm800': 'Chocomalt 800g',
         'cmKaw1kg': 'Chocomalt Kaw 1 Kg',
-        'cm10x35': 'Chocomalt Powder 35gx10'
+        'cm10x35': 'Chocomalt Powder 35gx10',
+        
+        // Twin Matrix DO Specific SKUs
+        'P-C1': 'PST Chocolate 1L',
+        'P-FyogM': 'PST Farm Yogurt 120G - Mango',
+        'P-FYogS': 'PST Farm Yogurt 120G - Strawberry',
+        'P-FyogMix': 'PST Farm Yogurt 120G - Mix Berry',
+        'P-GYogN': 'PST Greek Yogurt Natural 120G',
+        'P-GC100 Apple': 'PST GC Apple',
+        'P-GC100 Ori': 'PST GC Original',
+        'P-GC100 Melon': 'PST GC Melon',
+        'P-GC100 Grape': 'PST GC Grape',
+        'P-GC100 Frutti': 'PST GC Tutti Frutti',
+        'P-K7': 'PST Kurma 700ml',
+        'O1': 'UHT FF Oat 1l',
+        'A1': 'UHT FF Almond 1l',
+        'O200': 'UHT FF Oat 200ml',
+        'CLTA200': 'PST Cafe Latte 200ml'
     };
 
     function normalizeText(txt) {
@@ -489,7 +506,7 @@ require_once 'includes/header.php';
             }
         });
         
-        if (maxMatches >= 2) {
+        if (maxMatches >= 1) {
             return bestMatch;
         }
         
