@@ -217,7 +217,26 @@ const MMS_TRANSLATIONS = {
         lbl_adj_type: 'Adjustment Type',
         opt_add_pcs: 'Add (+)',
         opt_sub_pcs: 'Subtract (-)',
-        opt_set_total: 'Set Total Balance'
+        opt_set_total: 'Set Total Balance',
+
+        // ===== COMMERCIAL OUTBOUND =====
+        co_import_invoice_title: 'Import Invoice / DO (Hybrid Importer)',
+        co_import_invoice_desc: 'Upload your DO or Invoice file (PDF, XLS, CSV) to dynamically pre-fill customer, reference, date, and items.',
+        co_delivery_info: 'Delivery Information',
+        co_delivery_date: 'DELIVERY DATE',
+        co_customer_outlet: 'CUSTOMER / OUTLET',
+        co_do_ref: 'DO / INVOICE REF',
+        co_items_outbound: 'Items to Outbound',
+        co_col_product: 'Product Selection',
+        co_col_batch: 'Batch / Lot No.',
+        co_col_qty: 'Qty (Carton)',
+        co_col_action: 'Action',
+        co_btn_add: 'Add Another Product',
+        co_btn_confirm: 'CONFIRM & PROCESS OUTBOUND',
+        co_history_title: 'Processed Invoices Upload History',
+        co_history_desc: 'List of the last 10 processed commercial outbound files that deducted warehouse stock.',
+        co_col_proc_date: 'Process Date',
+        co_col_view: 'View Detail'
     },
 
     ms: {
@@ -431,7 +450,26 @@ const MMS_TRANSLATIONS = {
         lbl_adj_type: 'Jenis Pelarasan',
         opt_add_pcs: 'Tambah (+)',
         opt_sub_pcs: 'Tolak (-)',
-        opt_set_total: 'Set Jumlah Baki'
+        opt_set_total: 'Set Jumlah Baki',
+
+        // ===== COMMERCIAL OUTBOUND =====
+        co_import_invoice_title: 'Import Invois / DO (Pengimport Hibrid)',
+        co_import_invoice_desc: 'Muat naik fail DO atau Invois (PDF, XLS, CSV) untuk mengisi nama pelanggan, rujukan, tarikh, dan barangan secara automatik.',
+        co_delivery_info: 'Maklumat Penghantaran',
+        co_delivery_date: 'TARIKH PENGHANTARAN',
+        co_customer_outlet: 'NAMA PELANGGAN / OUTLET',
+        co_do_ref: 'NO. DO / RUJUKAN INVOIS',
+        co_items_outbound: 'Senarai Barangan Keluar',
+        co_col_product: 'Pilihan Produk',
+        co_col_batch: 'No. Batch / Lot',
+        co_col_qty: 'Kuantiti (Karton)',
+        co_col_action: 'Tindakan',
+        co_btn_add: 'Tambah Produk Lain',
+        co_btn_confirm: 'SAHKAN & PROSES STOK KELUAR',
+        co_history_title: 'Sejarah Fail Invois / DO Diproses',
+        co_history_desc: 'Senarai 10 fail invois komersial terakhir yang telah berjaya diproses dan memotong stok gudang.',
+        co_col_proc_date: 'Tarikh Proses',
+        co_col_view: 'Papar Detail'
     }
 };
 

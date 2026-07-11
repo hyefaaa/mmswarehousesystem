@@ -199,12 +199,12 @@ require_once 'includes/header.php';
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="fw-800 mb-1"><i class="bi bi-box-arrow-up-right me-2"></i>Stock Outbound</h1>
+                <h1 class="fw-800 mb-1"><i class="bi bi-box-arrow-up-right me-2"></i><span data-lang="nav_commercial_out">Stock Outbound</span></h1>
                 <p class="opacity-75 mb-0 fw-light">Commercial & Retail Distribution Command</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <a href="reconcile.php" class="btn btn-info text-white fw-bold"><i class="bi bi-scale me-1"></i> Reconcile</a>
+                <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
+                <a href="reconcile.php" class="btn btn-info text-white fw-bold"><i class="bi bi-scale me-1"></i> <span data-lang="nav_daily_reconcile">Reconcile</span></a>
             </div>
         </div>
     </div>
@@ -215,9 +215,9 @@ require_once 'includes/header.php';
     <!-- NEW: Import Invoice (Hybrid Approach) -->
     <div class="importer-card p-4 mb-4">
         <h5 class="fw-bold mb-2 text-primary d-flex align-items-center">
-            <i class="bi bi-file-earmark-arrow-up-fill me-2"></i> Import Invoice / DO (Hybrid Importer)
+            <i class="bi bi-file-earmark-arrow-up-fill me-2"></i> <span data-lang="co_import_invoice_title">Import Invoice / DO (Hybrid Importer)</span>
         </h5>
-        <p class="text-muted small mb-3">Muat naik fail invois atau DO harian (format .xlsx, .xls, .csv, atau .pdf) untuk mengisi senarai produk, kuantiti, tarikh & maklumat pelanggan secara automatik.</p>
+        <p class="text-muted small mb-3" data-lang="co_import_invoice_desc">Muat naik fail invois atau DO harian (format .xlsx, .xls, .csv, atau .pdf) untuk mengisi senarai produk, kuantiti, tarikh & maklumat pelanggan secara automatik.</p>
         
         <div class="row align-items-center g-3">
             <div class="col-md-9 col-sm-8">
@@ -225,7 +225,7 @@ require_once 'includes/header.php';
             </div>
             <div class="col-md-3 col-sm-4">
                 <button type="button" id="btn_process_invoice" class="btn btn-process btn-lg w-100 py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
-                    <i class="bi bi-lightning-charge-fill"></i> PROSES FAIL
+                    <i class="bi bi-lightning-charge-fill"></i> <span data-lang="co_col_view">PROSES FAIL</span>
                 </button>
             </div>
         </div>
@@ -235,21 +235,21 @@ require_once 'includes/header.php';
         
         <!-- SECTION 1: Delivery Information -->
         <div class="card shadow-sm border-0 mb-4 p-4">
-            <div class="block-header"><i class="bi bi-info-circle-fill"></i> Delivery Information</div>
+            <div class="block-header"><i class="bi bi-info-circle-fill"></i> <span data-lang="co_delivery_info">Delivery Information</span></div>
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold text-muted">DELIVERY DATE</label>
+                    <label class="form-label small fw-bold text-muted" data-lang="co_delivery_date">DELIVERY DATE</label>
                     <input type="date" name="out_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold text-muted">CUSTOMER / OUTLET</label>
+                    <label class="form-label small fw-bold text-muted" data-lang="co_customer_outlet">CUSTOMER / OUTLET</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light"><i class="bi bi-shop"></i></span>
                         <input type="text" name="customer_name" class="form-control" placeholder="e.g. Lotus's Kuala Terengganu" required>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold text-muted">DO / INVOICE REF</label>
+                    <label class="form-label small fw-bold text-muted" data-lang="co_do_ref">DO / INVOICE REF</label>
                     <input type="text" name="doc_ref" class="form-control" placeholder="e.g. DO-2026-0450">
                 </div>
             </div>
@@ -257,16 +257,16 @@ require_once 'includes/header.php';
 
         <!-- SECTION 2: Items to Outbound -->
         <div class="card shadow-sm border-0 mb-4 p-4">
-            <div class="block-header"><i class="bi bi-cart-check-fill"></i> Items to Outbound</div>
+            <div class="block-header"><i class="bi bi-cart-check-fill"></i> <span data-lang="co_items_outbound">Items to Outbound</span></div>
             
             <div class="modern-table-container mb-3">
                 <table class="table modern-table align-middle" id="outTable">
                     <thead>
                         <tr>
-                            <th class="ps-4">Product Selection</th>
-                            <th width="30%">Batch / Lot No.</th>
-                            <th width="15%" class="text-center">Qty (Carton)</th>
-                            <th width="10%" class="text-center">Action</th>
+                            <th class="ps-4" data-lang="co_col_product">Product Selection</th>
+                            <th width="30%" data-lang="co_col_batch">Batch / Lot No.</th>
+                            <th width="15%" class="text-center" data-lang="co_col_qty">Qty (Carton)</th>
+                            <th width="10%" class="text-center" data-lang="co_col_action">Action</th>
                         </tr>
                     </thead>
                     <tbody id="outBody">
@@ -299,14 +299,14 @@ require_once 'includes/header.php';
             
             <div class="mb-2">
                 <button type="button" class="btn btn-add-row" onclick="addRow()">
-                    <i class="bi bi-plus-lg me-2"></i> Add Another Product
+                    <i class="bi bi-plus-lg me-2"></i> <span data-lang="co_btn_add">Add Another Product</span>
                 </button>
             </div>
         </div>
 
         <div class="d-grid shadow-sm mb-5">
             <button type="submit" class="btn btn-mms-confirm btn-lg py-3">
-                <i class="bi bi-send-check-fill me-2"></i> CONFIRM & PROCESS OUTBOUND
+                <i class="bi bi-send-check-fill me-2"></i> <span data-lang="co_btn_confirm">CONFIRM & PROCESS OUTBOUND</span>
             </button>
         </div>
         
@@ -314,25 +314,25 @@ require_once 'includes/header.php';
 
     <!-- SEKSYEN 3: Sejarah Fail Invois / DO Diproses -->
     <div class="card shadow-sm border-0 mb-5 p-4" style="border-radius: 16px;">
-        <div class="block-header text-navy" style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;"><i class="bi bi-clock-history text-primary"></i> Sejarah Fail Invois / DO Diproses</div>
-        <p class="text-muted small mb-3">Senarai 10 fail invois komersial terakhir yang telah berjaya diproses dan memotong stok gudang.</p>
+        <div class="block-header text-navy" style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;"><i class="bi bi-clock-history text-primary"></i> <span data-lang="co_history_title">Sejarah Fail Invois / DO Diproses</span></div>
+        <p class="text-muted small mb-3" data-lang="co_history_desc">Senarai 10 fail invois komersial terakhir yang telah berjaya diproses dan memotong stok gudang.</p>
         
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
                 <thead class="table-light">
                     <tr class="text-secondary small fw-bold">
-                        <th class="ps-3">Tarikh Proses</th>
-                        <th>Tarikh Penghantaran</th>
-                        <th>No. DO / Invois Ref</th>
-                        <th>Nama Pelanggan / Outlet</th>
-                        <th class="text-center">Tindakan</th>
+                        <th class="ps-3" data-lang="co_col_proc_date">Tarikh Proses</th>
+                        <th data-lang="co_delivery_date">Tarikh Penghantaran</th>
+                        <th data-lang="co_do_ref">No. DO / Invois Ref</th>
+                        <th data-lang="co_customer_outlet">Nama Pelanggan / Outlet</th>
+                        <th class="text-center" data-lang="co_col_action">Tindakan</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($history_logs)): ?>
                         <tr>
                             <td colspan="5" class="text-center py-4 text-muted">
-                                <i class="bi bi-info-circle-fill fs-4 d-block mb-1"></i> Tiada rekod pemprosesan ditemui.
+                                <i class="bi bi-info-circle-fill fs-4 d-block mb-1"></i> <span data-lang="lbl_no_data">Tiada rekod pemprosesan ditemui.</span>
                             </td>
                         </tr>
                     <?php else: ?>
@@ -344,7 +344,7 @@ require_once 'includes/header.php';
                                 <td><?= htmlspecialchars($log['customer']) ?></td>
                                 <td class="text-center">
                                     <a href="outbound_history.php?search=<?= urlencode($log['doc_ref']) ?>" class="btn btn-sm btn-outline-primary py-1 px-3 fw-bold">
-                                        <i class="bi bi-eye-fill me-1"></i> Papar Detail
+                                        <i class="bi bi-eye-fill me-1"></i> <span data-lang="co_col_view">Papar Detail</span>
                                     </a>
                                 </td>
                             </tr>

@@ -110,12 +110,12 @@ require_once 'includes/header.php';
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="fw-800 mb-1"><i class="bi bi-graph-up-arrow me-2"></i>Warehouse Monitor & Reports</h1>
+                <h1 class="fw-800 mb-1"><i class="bi bi-graph-up-arrow me-2"></i><span data-lang="nav_wh_monitor">Warehouse Monitor</span></h1>
                 <p class="opacity-75 mb-0 fw-light">Traceability Tool & Live Inventory Status</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <a href="receiving_multi.php" class="btn btn-info text-white fw-bold"><i class="bi bi-plus-lg me-1"></i> Receive Stock</a>
+                <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
+                <a href="receiving_multi.php" class="btn btn-info text-white fw-bold"><i class="bi bi-plus-lg me-1"></i> <span data-lang="nav_receiving">Receive Stock</span></a>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@ require_once 'includes/header.php';
 
 <div class="container-fluid px-4 pb-5">
     <div class="card main-card border-0 mb-4">
-        <h5 class="fw-bold mb-3 text-mms-cyan"><i class="bi bi-search me-2"></i>Smart Traceability Tool</h5>
+        <h5 class="fw-bold mb-3 text-mms-cyan"><i class="bi bi-search me-2"></i><span data-lang="xfer_search">Smart Traceability Tool</span></h5>
         <form method="GET" class="row g-3">
                 <div class="col-md-2">
                     <label class="form-label small fw-bold text-muted text-uppercase">Supplier DO</label>

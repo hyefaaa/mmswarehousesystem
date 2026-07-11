@@ -220,12 +220,12 @@ require_once 'includes/header.php';
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h1 class="fw-800 mb-1 fs-4"><i class="bi bi-arrow-left-right me-2"></i>Stock Transfer</h1>
-                <p class="opacity-75 mb-0 small">Pindah stok antara lokasi — Warehouse, Buffer, Shop, Damaged</p>
+                <h1 class="fw-800 mb-1 fs-4"><i class="bi bi-arrow-left-right me-2"></i><span data-lang="xfer_title">Stock Transfer</span></h1>
+                <p class="opacity-75 mb-0 small" data-lang="xfer_subtitle">Pindah stok antara lokasi — Warehouse, Buffer, Shop, Damaged</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="index.php" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <a href="inventory_report.php" class="btn btn-outline-light btn-sm"><i class="bi bi-clipboard2-data me-1"></i> Inventory</a>
+                <a href="index.php" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
+                <a href="inventory_report.php" class="btn btn-outline-light btn-sm"><i class="bi bi-clipboard2-data me-1"></i> <span data-lang="nav_inv_report">Inventory</span></a>
             </div>
         </div>
     </div>
@@ -243,7 +243,7 @@ require_once 'includes/header.php';
 
     <!-- ===== LOCATION FLOW DIAGRAM ===== -->
     <div class="flow-wrap">
-        <div class="small fw-bold text-muted text-uppercase mb-3" style="letter-spacing:0.6px;">
+        <div class="small fw-bold text-muted text-uppercase mb-3" style="letter-spacing:0.6px;" data-lang="xfer_flow_label">
             <i class="bi bi-diagram-3 me-1"></i> Aliran Stok — Klik untuk tapis lokasi
         </div>
         <div class="d-flex flex-wrap gap-3 align-items-center">
@@ -336,15 +336,15 @@ require_once 'includes/header.php';
                 <thead>
                     <tr>
                         <th style="width:36px"><input type="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
-                        <th>Produk</th>
-                        <th>Kategori</th>
-                        <th>Batch / Lot</th>
-                        <th>Tarikh Luput</th>
-                        <th class="text-end">Stok Ada</th>
-                        <th class="text-center">Qty Pindah</th>
-                        <th>Pindah Ke</th>
-                        <th>Sebab</th>
-                        <th class="text-center">Tindakan</th>
+                        <th data-lang="xfer_col_product">Produk</th>
+                        <th data-lang="xfer_col_cat">Kategori</th>
+                        <th data-lang="xfer_col_batch">Batch / Lot</th>
+                        <th data-lang="xfer_col_expiry">Tarikh Luput</th>
+                        <th class="text-end" data-lang="xfer_col_stock">Stok Ada</th>
+                        <th class="text-center" data-lang="xfer_col_qty">Qty Pindah</th>
+                        <th data-lang="xfer_col_dest">Pindah Ke</th>
+                        <th data-lang="xfer_col_reason">Sebab</th>
+                        <th class="text-center" data-lang="xfer_col_action">Tindakan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -443,9 +443,9 @@ require_once 'includes/header.php';
         <!-- BULK TRANSFER BAR -->
         <div id="bulkBar" class="d-none border-top" style="background:#f8fafc; padding: 14px 20px;">
             <div class="d-flex flex-wrap align-items-center gap-3">
-                <span class="fw-bold text-muted small"><span id="selectedCount">0</span> batch dipilih</span>
+                <span class="fw-bold text-muted small"><span id="selectedCount">0</span> <span data-lang="xfer_bulk_selected">batch(es) selected</span></span>
                 <div class="d-flex align-items-center gap-2">
-                    <label class="small fw-bold text-muted">Pindah ke:</label>
+                    <label class="small fw-bold text-muted" data-lang="xfer_bulk_dest">Move to:</label>
                     <select class="dest-select" id="bulkDest">
                         <?php
                             $locs = ['Warehouse','Buffer'];
@@ -457,11 +457,11 @@ require_once 'includes/header.php';
                     </select>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <label class="small fw-bold text-muted">Sebab:</label>
+                    <label class="small fw-bold text-muted" data-lang="xfer_col_reason">Sebab:</label>
                     <input type="text" id="bulkReason" class="form-control form-control-sm" placeholder="Sebab pindahan..." style="width:200px;">
                 </div>
                 <button class="btn btn-primary btn-sm fw-bold" onclick="doBulkTransfer()">
-                    <i class="bi bi-arrow-right-circle me-1"></i> Pindah Semua Yang Dipilih (Qty Penuh)
+                    <i class="bi bi-arrow-right-circle me-1"></i> <span data-lang="xfer_bulk_btn">Pindah Semua Yang Dipilih (Qty Penuh)</span>
                 </button>
             </div>
         </div>
