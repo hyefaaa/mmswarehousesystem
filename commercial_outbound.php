@@ -722,7 +722,10 @@ require_once 'includes/header.php';
 
                 importedItems.push({
                     product_id: matchedProd.id,
-                    qty: cartons
+                    qty: cartons,
+                    desc: nameVal || sku,
+                    orig_qty: rawQty,
+                    orig_uom: uom || 'pcs'
                 });
             } else {
                 unmappedCount++;
@@ -743,7 +746,7 @@ require_once 'includes/header.php';
         rowCount = 0;
         
         importedItems.forEach(item => {
-            addImportedRow(item.product_id, item.qty);
+            addImportedRow(item.product_id, item.qty, item.desc, item.orig_qty, item.orig_uom);
         });
 
         Swal.fire({
@@ -754,17 +757,25 @@ require_once 'includes/header.php';
         });
     }
 
-    function addImportedRow(productId, qty) {
+    function addImportedRow(productId, qty, invoiceDesc = '', originalQty = '', originalUom = '') {
         let options = '<option value="">-- Choose Product --</option>';
         products.forEach(p => {
             const selected = p.id == productId ? 'selected' : '';
             options += `<option value="${p.id}" ${selected}>${p.name}</option>`;
         });
         
+        let descHtml = '';
+        if (invoiceDesc) {
+            descHtml = `<div class="text-muted small mt-1 ps-1" style="font-size: 0.78rem;">
+                <i class="bi bi-file-earmark-text text-primary me-1"></i>Fail asal: <strong>"${invoiceDesc}"</strong> (${originalQty} ${originalUom})
+            </div>`;
+        }
+        
         const html = `
             <tr class="item-row">
                 <td class="ps-4">
                     <select name="items[${rowCount}][product_id]" class="form-select product-select" required>${options}</select>
+                    ${descHtml}
                 </td>
                 <td>
                     <select name="items[${rowCount}][batch]" class="form-select form-select-sm batch-select text-center fw-bold" onchange="validateBatchStock(this)">
@@ -783,6 +794,10 @@ require_once 'includes/header.php';
         
         const row = document.getElementById('outBody').lastElementChild;
         $(row).find('.product-select').trigger('change');
+        
+        // Force retention of qty after the change event handler completes
+        $(row).find('.qty-input').val(qty);
+        
         rowCount++;
         initSelect2();
     }
