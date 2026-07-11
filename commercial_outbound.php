@@ -451,15 +451,29 @@ require_once 'includes/header.php';
         'cm10x35': 'Chocomalt Powder 35gx10'
     };
 
+    function normalizeText(txt) {
+        return String(txt || '')
+            .toUpperCase()
+            .replace(/YOG\b/g, 'YOGURT')
+            .replace(/MIXBERRIES/g, 'MIX BERRY')
+            .replace(/CHOCO\b/g, 'CHOCOLATE')
+            .replace(/1L\b/g, '1L')
+            .replace(/2L\b/g, '2L')
+            .replace(/[^A-Z0-9\s]/g, ' ')
+            .trim();
+    }
+
     function findProductByInvoiceRow(sku, desc) {
         sku = String(sku || '').trim().toUpperCase();
-        desc = String(desc || '').trim().toUpperCase();
+        desc = normalizeText(desc);
         
         // 1. Try to find direct SKU match in our manual mapping dictionary
-        for (const [key, val] of Object.entries(skuMap)) {
-            if (key.toUpperCase() === sku) {
-                const matchedProd = products.find(p => p.name.toUpperCase().includes(val.toUpperCase()));
-                if (matchedProd) return matchedProd;
+        if (sku !== '') {
+            for (const [key, val] of Object.entries(skuMap)) {
+                if (key.toUpperCase() === sku) {
+                    const matchedProd = products.find(p => normalizeText(p.name).includes(normalizeText(val)));
+                    if (matchedProd) return matchedProd;
+                }
             }
         }
         
@@ -468,10 +482,11 @@ require_once 'includes/header.php';
         let maxMatches = 0;
         
         products.forEach(p => {
-            const pWords = p.name.toUpperCase().split(/\s+/);
+            const pNorm = normalizeText(p.name);
+            const pWords = pNorm.split(/\s+/);
             let matchCount = 0;
             pWords.forEach(word => {
-                if (word.length > 2 && desc.includes(word)) {
+                if (word.length > 2 && word !== 'UHT' && word !== 'PST' && word !== 'MILK' && desc.includes(word)) {
                     matchCount++;
                 }
             });
@@ -486,8 +501,10 @@ require_once 'includes/header.php';
         }
         
         // 3. Fallback: search product names directly for the SKU as a substring code
-        const skuMatch = products.find(p => p.name.toUpperCase().includes(sku));
-        if (skuMatch) return skuMatch;
+        if (sku !== '') {
+            const skuMatch = products.find(p => normalizeText(p.name).includes(sku));
+            if (skuMatch) return skuMatch;
+        }
         
         return null;
     }
@@ -625,112 +642,90 @@ require_once 'includes/header.php';
             });
         }
 
+        // Find Header Row dynamically
+        let headerIndex = -1;
+        let skuCol = -1;
+        let nameCol = -1;
+        let qtyCol = -1;
+        let uomCol = -1;
+
+        for (let r = 0; r < rows.length; r++) {
+            const row = rows[r].map(c => String(c || '').trim().toUpperCase());
+            
+            if (row.indexOf('SKU') !== -1) {
+                skuCol = row.indexOf('SKU');
+            }
+            if (row.indexOf('NAME') !== -1) {
+                nameCol = row.indexOf('NAME');
+            } else if (row.indexOf('DESCRIPTION') !== -1) {
+                nameCol = row.indexOf('DESCRIPTION');
+            } else if (row.indexOf('DESC') !== -1) {
+                nameCol = row.indexOf('DESC');
+            }
+            
+            if (row.indexOf('QTY') !== -1) {
+                qtyCol = row.indexOf('QTY');
+            } else if (row.indexOf('QUANTITY') !== -1) {
+                qtyCol = row.indexOf('QUANTITY');
+            }
+            
+            if (row.indexOf('UOM') !== -1) {
+                uomCol = row.indexOf('UOM');
+            } else if (row.indexOf('UNIT') !== -1) {
+                uomCol = row.indexOf('UNIT');
+            }
+
+            if (qtyCol !== -1 && (skuCol !== -1 || nameCol !== -1)) {
+                headerIndex = r;
+                break;
+            }
+        }
+
+        // Fallback to default index assumptions if header not found
+        if (headerIndex === -1) {
+            headerIndex = 0;
+            skuCol = 1;
+            nameCol = 2;
+            qtyCol = 3;
+            uomCol = 4;
+        }
+
         // Parse items
         let importedItems = [];
         let unmappedCount = 0;
 
-        if (isPDF) {
-            // PDF specific table parsing
-            rows.forEach(row => {
-                if (row.length < 3) return;
-                
-                // Find if there is a UOM in the row
-                let uomIdx = -1;
-                for (let i = 0; i < row.length; i++) {
-                    const cellStr = String(row[i]).toLowerCase().trim();
-                    if (cellStr === 'ctn' || cellStr === 'pcs' || cellStr === 'pack' || cellStr === 'pieces' || cellStr === 'box' || cellStr === 'bottle' || cellStr === 'tub') {
-                        uomIdx = i;
-                        break;
-                    }
-                }
-                
-                if (uomIdx !== -1 && uomIdx >= 2) {
-                    const skuCandidate = String(row[1]).trim();
-                    const qtyCandidate = parseFloat(row[uomIdx - 1]);
-                    const uom = String(row[uomIdx]).toLowerCase().trim();
-                    
-                    if (skuCandidate && !isNaN(qtyCandidate) && qtyCandidate > 0) {
-                        const desc = row.slice(2, uomIdx - 1).join(' ');
-                        const matchedProd = findProductByInvoiceRow(skuCandidate, desc);
-                        
-                        if (matchedProd) {
-                            const packSize = parseInt(matchedProd.pack_size) || 12;
-                            let cartons = 0;
-                            
-                            if (uom.includes('ctn') || uom.includes('carton')) {
-                                cartons = Math.ceil(qtyCandidate);
-                            } else {
-                                cartons = Math.ceil(qtyCandidate / packSize);
-                            }
-                            
-                            importedItems.push({
-                                product_id: matchedProd.id,
-                                qty: cartons
-                            });
-                        } else {
-                            unmappedCount++;
-                        }
-                    }
-                }
-            });
-        } else {
-            // Excel/CSV specific table parsing
-            let headerIndex = -1;
-            let skuCol = -1;
-            let descCol = -1;
-            let qtyCol = -1;
-            let uomCol = -1;
+        for (let r = headerIndex + 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length < 2) continue;
 
-            for (let r = 0; r < rows.length; r++) {
-                const row = rows[r].map(c => String(c || '').trim().toUpperCase());
-                if (row.includes('SKU') && (row.includes('QTY') || row.includes('QUANTITY'))) {
-                    headerIndex = r;
-                    skuCol = row.indexOf('SKU');
-                    qtyCol = row.indexOf('QTY') !== -1 ? row.indexOf('QTY') : row.indexOf('QUANTITY');
-                    descCol = row.indexOf('DESCRIPTION') !== -1 ? row.indexOf('DESCRIPTION') : row.indexOf('DESC');
-                    uomCol = row.indexOf('UOM') !== -1 ? row.indexOf('UOM') : row.indexOf('UNIT');
-                    break;
-                }
-            }
+            const sku = skuCol !== -1 && skuCol < row.length ? String(row[skuCol] || '').trim() : '';
+            const nameVal = nameCol !== -1 && nameCol < row.length ? String(row[nameCol] || '').trim() : '';
+            const rawQty = qtyCol !== -1 && qtyCol < row.length ? parseFloat(row[qtyCol]) || 0 : 0;
+            const uom = uomCol !== -1 && uomCol < row.length ? String(row[uomCol] || '').toLowerCase().trim() : '';
 
-            if (headerIndex === -1) {
-                headerIndex = 0;
-                skuCol = 1;
-                descCol = 2;
-                qtyCol = 3;
-                uomCol = 4;
-            }
+            // Skip invalid rows, delivery charge or total summary rows, or zero/negative quantities
+            if (rawQty <= 0) continue;
+            if (sku === '' && nameVal === '') continue;
+            if (nameVal.toUpperCase().includes('DELIVERY CHARGE') || nameVal.toUpperCase().includes('TOTAL')) continue;
 
-            for (let r = headerIndex + 1; r < rows.length; r++) {
-                const row = rows[r];
-                if (!row || row.length < 2) continue;
+            const matchedProd = findProductByInvoiceRow(sku, nameVal);
 
-                const sku = row[skuCol];
-                const desc = row[descCol] || '';
-                const rawQty = parseFloat(row[qtyCol]) || 0;
-                const uom = String(row[uomCol] || 'ctn').toLowerCase().trim();
+            if (matchedProd) {
+                const packSize = parseInt(matchedProd.pack_size) || 12;
+                let cartons = 0;
 
-                if (!sku || rawQty <= 0) continue;
-
-                const matchedProd = findProductByInvoiceRow(sku, desc);
-
-                if (matchedProd) {
-                    const packSize = parseInt(matchedProd.pack_size) || 12;
-                    let cartons = 0;
-
-                    if (uom.includes('ctn') || uom.includes('carton')) {
-                        cartons = Math.ceil(rawQty);
-                    } else {
-                        cartons = Math.ceil(rawQty / packSize);
-                    }
-
-                    importedItems.push({
-                        product_id: matchedProd.id,
-                        qty: cartons
-                    });
+                if (uom.includes('ctn') || uom.includes('carton')) {
+                    cartons = Math.ceil(rawQty);
                 } else {
-                    unmappedCount++;
+                    cartons = Math.ceil(rawQty / packSize);
                 }
+
+                importedItems.push({
+                    product_id: matchedProd.id,
+                    qty: cartons
+                });
+            } else {
+                unmappedCount++;
             }
         }
 
