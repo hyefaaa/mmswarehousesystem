@@ -5,12 +5,13 @@ error_reporting(E_ALL);
 require_once 'config/db.php';
 
 // Fetch Commercial Products (Excluding PSS for internal use)
-$products = $pdo->query("SELECT id, name, category FROM products WHERE category != 'PSS' AND is_active=1 ORDER BY name ASC")->fetchAll();
+$products = $pdo->query("SELECT id, name, category, pack_size FROM products WHERE category != 'PSS' AND is_active=1 ORDER BY name ASC")->fetchAll();
 
 
 $page_title = 'Commercial Outbound | MMS LOGISTIK';
 require_once 'includes/header.php';
 ?>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
     /* Header Styling */
@@ -99,6 +100,28 @@ require_once 'includes/header.php';
 </div>
 
 <div class="container-fluid px-4 pb-5">
+    
+    <!-- NEW: Import Invoice (Hybrid Approach) -->
+    <div class="card shadow-sm border-0 mb-4 bg-light-subtle">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-2 text-primary d-flex align-items-center">
+                <i class="bi bi-file-earmark-arrow-up-fill me-2"></i> Import Invoice / DO (Hybrid Importer)
+            </h5>
+            <p class="text-muted small mb-3">Muat naik fail invois atau DO harian (format .xlsx, .xls, atau .csv) untuk mengisi senarai produk, kuantiti, tarikh & maklumat pelanggan secara automatik.</p>
+            
+            <div class="row align-items-center g-3">
+                <div class="col-md-9 col-sm-8">
+                    <input type="file" id="invoice_file_input" class="form-control form-control-lg border-primary-subtle" accept=".xlsx, .xls, .csv">
+                </div>
+                <div class="col-md-3 col-sm-4">
+                    <button type="button" id="btn_process_invoice" class="btn btn-primary btn-lg w-100 fw-bold py-2 shadow-sm">
+                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> PROSES FAIL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <form action="api/save_commercial_outbound.php" method="POST" id="outboundForm" class="card main-card border-0">
         
         <div class="section-title"><i class="bi bi-info-circle-fill"></i> Delivery Information</div>
@@ -270,6 +293,276 @@ require_once 'includes/header.php';
             });
             qtyInput.val(maxQty);
         }
+    }
+
+    // Mapping dictionary for SKU shortcodes to keywords in product names
+    const skuMap = {
+        'F1': 'Fresh 1l',
+        'C1': 'Chocolate 1l',
+        'K1': 'Kurma 1l',
+        'UHTBaristaNoCap': 'Barista 1l',
+        'YrPro1NoCap': 'Full Cream Professional 1l',
+        'YrC1': 'Yarra Chocolate 1l',
+        'YrS1': 'Yarra Strawberry 1l',
+        'YrFC1': 'Yarra Full Cream 1l',
+        'K200': 'Kurma 200ml',
+        'C200': 'Chocolate 200ml',
+        'B200': 'Banana 200ml',
+        'F200': 'Fresh 200ml',
+        'YrS200': 'Yarra Strawberry 200ml',
+        'YrC200': 'Yarra Chocolate 200ml',
+        'YrFC200': 'Yarra Full Cream 200ml',
+        'Ymix200': 'Yog Mix Berry 200ml',
+        'YS200': 'Yog Strawberry 200ml',
+        'YM200': 'Yog Mango 200ml',
+        'G200': 'Grow Up 200ml',
+        'A200': 'Almond 200ml',
+        'AUns200': 'Almond Unsweetened 200ml',
+        'YrS125': 'Yarra Strawberry 125ml',
+        'YrC125': 'Yarra Chocolate 125ml',
+        'YrFC125': 'Yarra Full Cream 125ml',
+        'K125': 'Kurma 125ml',
+        'B125': 'Banana 125ml',
+        'C125': 'Chocolate 125ml',
+        'F125': 'Fresh 125ml',
+        'G125': 'Grow Up 125ml',
+        'YMix125': 'Yog Mix Berry 125ml',
+        'YM125': 'Yog Mango 125ml',
+        'YS125': 'Yog Strawberry 125ml',
+        'moola100': 'Moola Choco Malt 100ml',
+        'Fcp800': 'Full Cream Milk Powder 800g',
+        'cm800': 'Chocomalt 800g',
+        'cmKaw1kg': 'Chocomalt Kaw 1 Kg',
+        'cm10x35': 'Chocomalt Powder 35gx10'
+    };
+
+    function findProductByInvoiceRow(sku, desc) {
+        sku = String(sku || '').trim().toUpperCase();
+        desc = String(desc || '').trim().toUpperCase();
+        
+        // 1. Try to find direct SKU match in our manual mapping dictionary
+        for (const [key, val] of Object.entries(skuMap)) {
+            if (key.toUpperCase() === sku) {
+                const matchedProd = products.find(p => p.name.toUpperCase().includes(val.toUpperCase()));
+                if (matchedProd) return matchedProd;
+            }
+        }
+        
+        // 2. Try to find match using description containing product name keywords
+        let bestMatch = null;
+        let maxMatches = 0;
+        
+        products.forEach(p => {
+            const pWords = p.name.toUpperCase().split(/\s+/);
+            let matchCount = 0;
+            pWords.forEach(word => {
+                if (word.length > 2 && desc.includes(word)) {
+                    matchCount++;
+                }
+            });
+            if (matchCount > maxMatches) {
+                maxMatches = matchCount;
+                bestMatch = p;
+            }
+        });
+        
+        if (maxMatches >= 2) {
+            return bestMatch;
+        }
+        
+        // 3. Fallback: search product names directly for the SKU as a substring code
+        const skuMatch = products.find(p => p.name.toUpperCase().includes(sku));
+        if (skuMatch) return skuMatch;
+        
+        return null;
+    }
+
+    document.getElementById('btn_process_invoice').onclick = function() {
+        const fileInput = document.getElementById('invoice_file_input');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            Swal.fire('Sila pilih fail', 'Pilih fail Excel (.xlsx, .xls) atau CSV invois terlebih dahulu.', 'warning');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        Swal.fire({ title: 'Memproses fail...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (rows.length < 2) {
+                    throw new Error("Fail kosong atau format tidak sah.");
+                }
+
+                // Heuristic metadata extraction (Date, Customer Name, DO Number)
+                let docRef = '';
+                let customerName = '';
+                let deliveryDate = '';
+
+                for (let r = 0; r < Math.min(rows.length, 15); r++) {
+                    const rowStr = rows[r].map(c => String(c || '').trim().toUpperCase()).join(' | ');
+                    
+                    if (rowStr.includes('BILL TO') || rowStr.includes('CUSTOMER')) {
+                        for (let offset = 1; offset <= 3; offset++) {
+                            if (rows[r+offset]) {
+                                const candidate = rows[r+offset].find(c => String(c || '').trim().length > 10);
+                                if (candidate) {
+                                    customerName = String(candidate).trim();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    rows[r].forEach(cell => {
+                        const cellStr = String(cell || '').trim();
+                        if (/^(DO|DOTME|INV|INV-)\w+[-/\w]*/i.test(cellStr)) {
+                            docRef = cellStr;
+                        }
+                        const dateMatch = cellStr.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+                        if (dateMatch) {
+                            const day = dateMatch[1].padStart(2, '0');
+                            const month = dateMatch[2].padStart(2, '0');
+                            const year = dateMatch[3];
+                            deliveryDate = `${year}-${month}-${day}`;
+                        }
+                    });
+                }
+
+                // Find Item Table Headers row
+                let headerIndex = -1;
+                let skuCol = -1;
+                let descCol = -1;
+                let qtyCol = -1;
+                let uomCol = -1;
+
+                for (let r = 0; r < rows.length; r++) {
+                    const row = rows[r].map(c => String(c || '').trim().toUpperCase());
+                    if (row.includes('SKU') && (row.includes('QTY') || row.includes('QUANTITY'))) {
+                        headerIndex = r;
+                        skuCol = row.indexOf('SKU');
+                        qtyCol = row.indexOf('QTY') !== -1 ? row.indexOf('QTY') : row.indexOf('QUANTITY');
+                        descCol = row.indexOf('DESCRIPTION') !== -1 ? row.indexOf('DESCRIPTION') : row.indexOf('DESC');
+                        uomCol = row.indexOf('UOM') !== -1 ? row.indexOf('UOM') : row.indexOf('UNIT');
+                        break;
+                    }
+                }
+
+                // Fallback in case columns aren't named standard
+                if (headerIndex === -1) {
+                    headerIndex = 0;
+                    skuCol = 1;
+                    descCol = 2;
+                    qtyCol = 3;
+                    uomCol = 4;
+                }
+
+                // Parse items
+                let importedItems = [];
+                let unmappedCount = 0;
+
+                for (let r = headerIndex + 1; r < rows.length; r++) {
+                    const row = rows[r];
+                    if (!row || row.length < 2) continue;
+
+                    const sku = row[skuCol];
+                    const desc = row[descCol] || '';
+                    const rawQty = parseFloat(row[qtyCol]) || 0;
+                    const uom = String(row[uomCol] || 'ctn').toLowerCase().trim();
+
+                    if (!sku || rawQty <= 0) continue;
+
+                    const matchedProd = findProductByInvoiceRow(sku, desc);
+
+                    if (matchedProd) {
+                        const packSize = parseInt(matchedProd.pack_size) || 12;
+                        let cartons = 0;
+
+                        if (uom.includes('ctn') || uom.includes('carton')) {
+                            cartons = Math.ceil(rawQty);
+                        } else {
+                            // Convert pcs to carton, rounding up
+                            cartons = Math.ceil(rawQty / packSize);
+                        }
+
+                        importedItems.push({
+                            product_id: matchedProd.id,
+                            product_name: matchedProd.name,
+                            qty: cartons
+                        });
+                    } else {
+                        unmappedCount++;
+                    }
+                }
+
+                if (importedItems.length === 0) {
+                    throw new Error("Tiada barisan produk yang sepadan ditemui dalam sistem.");
+                }
+
+                // Autofill metadata
+                if (customerName) document.querySelector('input[name="customer_name"]').value = customerName;
+                if (docRef) document.querySelector('input[name="doc_ref"]').value = docRef;
+                if (deliveryDate) document.querySelector('input[name="out_date"]').value = deliveryDate;
+
+                // Clear manual rows and populate with imported rows
+                document.getElementById('outBody').innerHTML = '';
+                rowCount = 0;
+                
+                importedItems.forEach(item => {
+                    addImportedRow(item.product_id, item.qty);
+                });
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Invois Berjaya Diimport!',
+                    text: `Berjaya mengimport ${importedItems.length} produk. ${unmappedCount > 0 ? unmappedCount + ' baris gagal dipadankan.' : ''}`,
+                    confirmButtonColor: '#10b981'
+                });
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Ralat Memproses', err.message || 'Gagal menganalisis struktur fail.', 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    function addImportedRow(productId, qty) {
+        let options = '<option value="">-- Choose Product --</option>';
+        products.forEach(p => {
+            const selected = p.id == productId ? 'selected' : '';
+            options += `<option value="${p.id}" ${selected}>${p.name}</option>`;
+        });
+        
+        const html = `
+            <tr class="item-row">
+                <td class="ps-4">
+                    <select name="items[${rowCount}][product_id]" class="form-select product-select" required>${options}</select>
+                </td>
+                <td>
+                    <select name="items[${rowCount}][batch]" class="form-select form-select-sm batch-select text-center fw-bold" onchange="validateBatchStock(this)">
+                        <option value="">-- Auto FEFO --</option>
+                    </select>
+                </td>
+                <td><input type="number" name="items[${rowCount}][qty]" class="form-control form-control-sm fw-bold text-center border-primary-subtle qty-input" required min="1" value="${qty}" oninput="validateBatchStock(this)"></td>
+                <td class="text-center pe-4">
+                    <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeRow(this)">
+                        <i class="bi bi-trash3 fs-5"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        document.getElementById('outBody').insertAdjacentHTML('beforeend', html);
+        
+        const row = document.getElementById('outBody').lastElementChild;
+        $(row).find('.product-select').trigger('change');
+        rowCount++;
     }
 
     document.getElementById('outboundForm').onsubmit = function(e) {
