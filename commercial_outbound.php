@@ -442,20 +442,29 @@ require_once 'includes/header.php';
     $(document).on('change', '.product-select', function() {
         let row = $(this).closest('tr');
         let pid = $(this).val();
+        let lastPid = row.data('last-pid') || '';
         let batchSelect = row.find('.batch-select');
         let qtyInput = row.find('.qty-input');
         
-        batchSelect.empty().append('<option value="">-- Auto FEFO --</option>');
+        if (pid !== lastPid) {
+            row.data('last-pid', pid);
+            batchSelect.empty().append('<option value="">-- Auto FEFO --</option>');
+            qtyInput.val('');
+        }
         
         if (pid) {
             fetch('api/get_batches.php?product_id=' + pid)
             .then(res => res.json())
             .then(batches => {
+                // Keep the current selection if it exists, otherwise empty it
+                let currentVal = batchSelect.val();
+                batchSelect.empty().append('<option value="">-- Auto FEFO --</option>');
                 if (batches.length === 0) {
                     batchSelect.empty().append('<option value="" disabled selected>⚠️ Tiada Stok Aktif</option>');
                 } else {
                     batches.forEach(b => {
-                        batchSelect.append(`<option value="${b.batch_no}" data-qty="${b.qty_on_hand}">Batch: ${b.batch_no} (Baki: ${b.qty_on_hand} ctn | Exp: ${b.expiry_date})</option>`);
+                        let selectedAttr = (b.batch_no === currentVal) ? 'selected' : '';
+                        batchSelect.append(`<option value="${b.batch_no}" data-qty="${b.qty_on_hand}" ${selectedAttr}>Batch: ${b.batch_no} (Baki: ${b.qty_on_hand} ctn | Exp: ${b.expiry_date})</option>`);
                     });
                 }
                 checkStockAlert(row);
@@ -735,12 +744,15 @@ require_once 'includes/header.php';
                 if (/^(DO|DOTME|INV|INV-)\w+[-/\w]*/i.test(cellStr)) {
                     docRef = cellStr;
                 }
-                const dateMatch = cellStr.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+                const dateMatch = cellStr.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
                 if (dateMatch) {
-                    const day = dateMatch[1].padStart(2, '0');
-                    const month = dateMatch[2].padStart(2, '0');
-                    const year = dateMatch[3];
-                    deliveryDate = `${year}-${month}-${day}`;
+                    const yr = parseInt(dateMatch[3]);
+                    if (yr >= 2000 && yr <= 2100) {
+                        const day = dateMatch[1].padStart(2, '0');
+                        const month = dateMatch[2].padStart(2, '0');
+                        const year = dateMatch[3];
+                        deliveryDate = `${year}-${month}-${day}`;
+                    }
                 }
             });
         }
