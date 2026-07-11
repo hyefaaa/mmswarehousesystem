@@ -89,7 +89,7 @@ require_once 'includes/header.php';
     /* Table Styling */
     .modern-table-container {
         border-radius: 12px;
-        overflow: hidden;
+        overflow-x: auto;
         border: 1px solid #e2e8f0;
         box-shadow: 0 4px 15px rgba(0,0,0,0.03);
         background: #ffffff;

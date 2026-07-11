@@ -1,453 +1,410 @@
 <?php
-// pss_delivery.php - MMS UPGRADED INTERFACE
+// pss_delivery.php - Dealer/HD Specific School Deliveries Checklist (Old System Restored)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
+
 require_once 'config/db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
 $role = $_SESSION['role'] ?? '';
-$hd_id_sess = $_SESSION['hd_id'] ?? null;
+$username = $_SESSION['username'] ?? '';
+$full_name = $_SESSION['full_name'] ?? 'Pengguna';
 
-$co_list = $pdo->query("
-    SELECT DISTINCT co_number FROM (
-        SELECT DISTINCT co_number FROM schools WHERE co_number IS NOT NULL
-        UNION
-        SELECT DISTINCT co_number FROM import_cos WHERE co_number IS NOT NULL
-    ) AS combined ORDER BY co_number DESC
-")->fetchAll();
-$selected_co = $_GET['co'] ?? ($co_list[0]['co_number'] ?? '');
-
-// Check if there are imported transactions in import_cos for selected CO
-$stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM import_cos WHERE co_number = ?");
-$stmtCheck->execute([$selected_co]);
-$has_imported_transactions = $stmtCheck->fetchColumn() > 0;
-
-if ($has_imported_transactions) {
+// Switch DB context to read initial stats
+try {
+    $pdo->exec("USE susumura_mms_logistik");
+    
     if ($role === 'dealer') {
-        $sql = "SELECT s.id, s.school_name, s.school_code, t.bil_murid AS student_count, 
-                       s.default_hd_id, ? AS co_number, t.no_sap AS sap_no, 
-                       s.tender_no, s.contract_no, s.zone_code, h.name as hd_name 
-                FROM import_transactions t
-                JOIN import_cos co ON t.batch_id = co.batch_id
-                JOIN schools s ON t.kod_sekolah = s.school_code
-                LEFT JOIN hds h ON s.default_hd_id = h.id
-                WHERE co.co_number = ? AND s.default_hd_id = ? 
-                ORDER BY s.school_name ASC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$selected_co, $selected_co, $hd_id_sess]);
+        $total_schools   = $pdo->prepare("SELECT COUNT(*) FROM mms_logistik WHERE dealer = ?");
+        $total_schools->execute([$username]);
+        $total_schools   = $total_schools->fetchColumn() ?: 0;
+
+        $total_delivered = $pdo->prepare("SELECT COUNT(*) FROM mms_logistik WHERE dealer = ? AND isDelivered = 1");
+        $total_delivered->execute([$username]);
+        $total_delivered = $total_delivered->fetchColumn() ?: 0;
+
+        $total_cartons   = $pdo->prepare("SELECT SUM(totalCartons) FROM mms_logistik WHERE dealer = ?");
+        $total_cartons->execute([$username]);
+        $total_cartons   = $total_cartons->fetchColumn() ?: 0;
     } else {
-        $sql = "SELECT s.id, s.school_name, s.school_code, t.bil_murid AS student_count, 
-                       s.default_hd_id, ? AS co_number, t.no_sap AS sap_no, 
-                       s.tender_no, s.contract_no, s.zone_code, h.name as hd_name 
-                FROM import_transactions t
-                JOIN import_cos co ON t.batch_id = co.batch_id
-                JOIN schools s ON t.kod_sekolah = s.school_code
-                LEFT JOIN hds h ON s.default_hd_id = h.id
-                WHERE co.co_number = ? 
-                ORDER BY s.school_name ASC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$selected_co, $selected_co]);
+        $total_schools   = $pdo->query("SELECT COUNT(*) FROM mms_logistik")->fetchColumn() ?: 0;
+        $total_delivered = $pdo->query("SELECT COUNT(*) FROM mms_logistik WHERE isDelivered = 1")->fetchColumn() ?: 0;
+        $total_cartons   = $pdo->query("SELECT SUM(totalCartons) FROM mms_logistik")->fetchColumn() ?: 0;
     }
-} else {
-    if ($role === 'dealer') {
-        $stmt = $pdo->prepare("SELECT s.id, s.school_name, s.school_code, s.student_count, s.default_hd_id, s.co_number, s.sap_no, s.tender_no, s.contract_no, s.zone_code, h.name as hd_name FROM schools s LEFT JOIN hds h ON s.default_hd_id = h.id WHERE s.co_number = ? AND s.default_hd_id = ? ORDER BY s.school_name ASC");
-        $stmt->execute([$selected_co, $hd_id_sess]);
-    } else {
-        $stmt = $pdo->prepare("SELECT s.id, s.school_name, s.school_code, s.student_count, s.default_hd_id, s.co_number, s.sap_no, s.tender_no, s.contract_no, s.zone_code, h.name as hd_name FROM schools s LEFT JOIN hds h ON s.default_hd_id = h.id WHERE s.co_number = ? ORDER BY s.school_name ASC");
-        $stmt->execute([$selected_co]);
-    }
+
+    $progress_percent = ($total_schools > 0) ? round(($total_delivered / $total_schools) * 100) : 0;
+} catch (PDOException $e) {
+    $total_schools = $total_delivered = $total_cartons = 0;
+    $progress_percent = 0;
 }
-$schools = $stmt->fetchAll();
 
-// DASHBOARD DATA
-$stats_contract = [
-    'total_schools' => count($schools),
-    'total_students' => array_sum(array_column($schools, 'student_count'))
-];
-
-$stmt = $pdo->query("SELECT SUM(b.qty_on_hand) as total_stock FROM inventory_batches b JOIN products p ON b.product_id = p.id WHERE p.category = 'PSS' AND b.location_status = 'Warehouse'");
-$stats_stock = $stmt->fetch();
-
-if ($role === 'dealer') {
-    $stmt = $pdo->prepare("SELECT d.do_number, d.delivery_date, d.vehicle_plate, s.school_name FROM deliveries_pss d LEFT JOIN schools s ON d.school_id = s.id WHERE d.hd_id = ? ORDER BY d.created_at DESC LIMIT 10");
-    $stmt->execute([$hd_id_sess]);
-} else {
-    $stmt = $pdo->prepare("SELECT d.do_number, d.delivery_date, d.vehicle_plate, s.school_name FROM deliveries_pss d LEFT JOIN schools s ON d.school_id = s.id ORDER BY d.created_at DESC LIMIT 10");
-    $stmt->execute();
-}
-$recent_deliveries = $stmt->fetchAll();
-
-// FORM DATA
-$hds = $pdo->query("SELECT id, name FROM hds WHERE status='Active' ORDER BY name ASC")->fetchAll();
-
-$ppd_list = array_filter(array_unique(array_column($schools, 'zone_code')));
-sort($ppd_list);
-
-$batches = $pdo->query("SELECT b.id, b.batch_no, b.expiry_date, b.qty_on_hand FROM inventory_batches b JOIN products p ON b.product_id = p.id WHERE p.category = 'PSS' AND b.qty_on_hand > 0 AND b.location_status = 'Warehouse' ORDER BY b.expiry_date ASC")->fetchAll();
-
-$page_title = 'MMS | PSS Management Hub';
+$page_title = 'School Delivery PSS | MMS';
 require_once 'includes/header.php';
 ?>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <style>
     :root {
-        --mms-blue: #0d47a1; /* Biru Korporat MMS */
-        --mms-light-blue: #e3f2fd;
-        --mms-accent: #ffc107; /* Kuning Aksen */
+        --mms-navy: #0b2147;
+        --mms-cyan: #06b6d4;
+        --mms-light: #f8fafc;
+        --mms-success: #10b981;
+        --mms-warning: #f59e0b;
     }
     
-    /* Navbar style Header */
-    .mms-header-sub { background-color: white; border-bottom: 3px solid var(--mms-blue); padding: 1rem 0; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: -1.5rem; }
-    
-    /* Card Styling */
-    .card { border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .card-header { background-color: var(--mms-blue) !important; color: white; border-radius: 10px 10px 0 0 !important; font-weight: 600; }
-    
-    /* Dashboard Stats */
-    .dash-card { border-left: 5px solid var(--mms-blue); }
-    .stat-label { font-size: 0.75rem; text-transform: uppercase; color: #6c757d; font-weight: bold; }
-    .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--mms-blue); }
+    .container {
+        max-width: 1200px;
+        margin: 20px auto;
+    }
 
-    /* Form Styling */
-    .form-label { font-weight: 600; color: #495057; font-size: 0.85rem; }
-    .read-only-field { background-color: var(--mms-light-blue); border-color: #bbdefb; font-weight: bold; color: #0d47a1; }
-    
-    /* Picking Box - High Contrast */
-    .picking-box { background-color: #212529; color: var(--mms-accent); border-radius: 8px; padding: 1.5rem; font-family: 'Courier New', monospace; font-size: 1.4rem; text-align: center; border: 2px solid var(--mms-blue); }
-    
-    /* HD Summary */
-    .hd-summary-box { background-color: #fff9c4; border: 1px dashed var(--mms-accent); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; }
-    
-    .btn-mms { background-color: var(--mms-blue); color: white; border: none; transition: 0.3s; }
-    .btn-mms:hover { background-color: #0a3d8d; color: white; transform: translateY(-2px); }
-    
-    .scrolled-table-container { max-height: 400px; overflow-y: auto; }
-    .select2-container .select2-selection--single { height: 38px; border-color: #dee2e6; }
+    .overall-progress-container {
+        background: #e2e8f0;
+        border-radius: 30px;
+        height: 34px;
+        position: relative;
+        overflow: hidden;
+        margin: 20px 0;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+    }
+    .overall-progress-bar {
+        background: linear-gradient(90deg, #10b981, #34d399);
+        height: 100%;
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 30px;
+    }
+    .progress-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        top: 6px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: #0f172a;
+        z-index: 2;
+        text-shadow: 0 1px 1px rgba(255,255,255,0.6);
+    }
+
+    .stock-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .stock-card {
+        padding: 20px;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+        border-left: 6px solid #cbd5e1;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stock-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+    }
+
+    .day-section {
+        margin-top: 30px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        background: white;
+    }
+    .day-header {
+        background: var(--mms-navy);
+        color: white;
+        padding: 14px 20px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+    }
+    .day-summary {
+        background: #fffbeb;
+        padding: 12px 20px;
+        border-bottom: 1px solid #fef3c7;
+        color: #d97706;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: left;
+        font-size: 0.9rem;
+    }
+    th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.5px;
+    }
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    #toast-container {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+    }
+    .toast {
+        background: #1e293b;
+        color: white;
+        padding: 12px 28px;
+        border-radius: 30px;
+        margin-bottom: 10px;
+        font-weight: 700;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        animation: slideDown 0.3s forwards;
+    }
+    @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
 </style>
+
+<div id="toast-container"></div>
 
 <div class="page-header mb-4">
     <div class="container-fluid px-4">
-        <div class="d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
+        <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="fw-800 mb-1"><i class="bi bi-truck me-2"></i>PSS Delivery Hub</h1>
-                <p class="opacity-75 mb-0 fw-light">Susu Sekolah (PSS) Management Hub</p>
+                <h1 class="fw-800 mb-1"><i class="bi bi-mortarboard-fill me-2 text-success"></i>School Delivery PSS</h1>
+                <p class="opacity-75 mb-0 fw-light">Checklist and SAP documentation for schools under your delivery zone</p>
             </div>
-            <div class="d-flex gap-3 align-items-center">
-                <form method="GET" class="d-flex align-items-center bg-white bg-opacity-10 p-1.5 rounded-3 border border-white border-opacity-20 text-white">
-                    <small class="px-2 fw-bold text-uppercase small" style="letter-spacing: 0.5px;">Cycle:</small>
-                    <select name="co" class="form-select form-select-sm border-0 bg-transparent text-white fw-bold cursor-pointer" onchange="this.form.submit()" style="background-color: transparent; outline: none; box-shadow: none;">
-                        <?php foreach($co_list as $co): ?>
-                            <option value="<?= $co['co_number'] ?>" <?= $selected_co == $co['co_number'] ? 'selected' : '' ?> class="text-dark">
-                                <?= htmlspecialchars($co['co_number']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
+            <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
             </div>
         </div>
     </div>
 </div>
 
-<div class="container-fluid px-4">
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card dash-card h-100">
-                <div class="card-body">
-                    <div class="stat-label">Stok Semasa</div>
-                    <div class="stat-value text-success"><?= number_format($stats_stock['total_stock'] ?? 0) ?></div>
-                </div>
-            </div>
+<div class="container px-4 pb-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold text-navy mb-0"><i class="bi bi-list-check me-2 text-success"></i>Senarai Penghantaran Sekolah PSS</h3>
+        <span class="badge bg-success px-3 py-2 rounded-pill text-uppercase" style="letter-spacing: 0.5px;">AKSES: <?= htmlspecialchars($role) ?></span>
+    </div>
+
+    <!-- Real-time progress bar -->
+    <div class="overall-progress-container">
+        <div class="overall-progress-bar" id="overallBar" style="width: <?= $progress_percent ?>%"></div>
+        <div class="progress-text" id="overallText">Loading progress...</div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="stock-grid">
+        <div class="stock-card" style="border-left-color: var(--mms-cyan);">
+            <small class="stat-label">Jumlah Sekolah</small><br>
+            <b class="stat-value" id="statsSchools"><?= number_format($total_schools) ?></b>
         </div>
-        <div class="col-md-3">
-            <div class="card dash-card h-100">
-                <div class="card-body">
-                    <div class="stat-label">Jumlah Sekolah (<?= $selected_co ?>)</div>
-                    <div class="stat-value"><?= number_format($stats_contract['total_schools'] ?? 0) ?></div>
-                </div>
-            </div>
+        <div class="stock-card" style="border-left-color: var(--mms-success);">
+            <small class="stat-label">Selesai Dihantar</small><br>
+            <b class="stat-value text-success" id="statsDelivered"><?= number_format($total_delivered) ?></b>
         </div>
-        <div class="col-md-3">
-            <div class="card dash-card h-100">
-                <div class="card-body">
-                    <div class="stat-label">Jumlah Murid</div>
-                    <div class="stat-value"><?= number_format($stats_contract['total_students'] ?? 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 bg-dark text-white h-100">
-                <div class="card-body">
-                    <div class="stat-label text-light opacity-75">Keperluan Unit (Pcs)</div>
-                    <div class="stat-value text-warning"><?= number_format(($stats_contract['total_students'] ?? 0) * 44) ?></div>
-                </div>
-            </div>
+        <div class="stock-card" style="border-left-color: var(--mms-warning);">
+            <small class="stat-label">Jumlah Karton</small><br>
+            <b class="stat-value text-warning" id="statsCartons"><?= number_format($total_cartons) ?></b>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <form method="POST" action="api/save_delivery.php">
-                <input type="hidden" name="co_number" value="<?= htmlspecialchars($selected_co) ?>">
-                
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>📝 PENYEDIAAN DELIVERY ORDER (DO)</span>
-                        <span class="badge bg-warning text-dark"><?= date('d-m-Y') ?></span>
-                    </div>
-                    <div class="card-body">
-                        
-                        <div class="row g-3 mb-4 bg-light p-3 rounded border" <?php if ($role === 'dealer') echo 'style="display:none;"'; ?>>
-                            <div class="col-md-6">
-                                <label class="form-label">Tapis PPD</label>
-                                <select id="ppd_filter" class="form-select select2" onchange="filterSchools()">
-                                    <option value="all">Semua PPD</option>
-                                    <?php foreach($ppd_list as $ppd): ?>
-                                        <option value="<?= htmlspecialchars(strtoupper($ppd)) ?>"><?= htmlspecialchars(strtoupper($ppd)) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Tapis HD/Kontraktor</label>
-                                <select name="hd_id" id="hd_filter" class="form-select select2" onchange="filterSchools()">
-                                    <?php if ($role !== 'dealer'): ?>
-                                        <option value="all">Semua HD</option>
-                                    <?php endif; ?>
-                                    <?php foreach($hds as $hd): ?>
-                                        <option value="<?= $hd['id'] ?>" <?= ($role === 'dealer' && $hd_id_sess == $hd['id']) ? 'selected' : '' ?>><?= htmlspecialchars($hd['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
+    <!-- Display area for grouped days -->
+    <div id="mainDisplay"></div>
 
-                        <div class="hd-summary-box" id="hd_stats_panel">
-                            <div class="row text-center">
-                                <div class="col-md-4">
-                                    <small class="stat-label">Sekolah</small><br>
-                                    <span class="fw-bold" id="hd_total_schools">0</span>
-                                </div>
-                                <div class="col-md-4 border-start">
-                                    <small class="stat-label">Murid</small><br>
-                                    <span class="fw-bold" id="hd_total_students">0</span>
-                                </div>
-                                <div class="col-md-4 border-start">
-                                    <small class="stat-label">Jumlah Keperluan</small><br>
-                                    <span class="fw-bold text-primary" id="hd_total_packs">0</span> <small>Pcs</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-8">
-                                <label class="form-label">Pilih Sekolah</label>
-                                <select name="school_id" class="form-select select2" id="school_select" onchange="updateQuota()">
-                                    <option value="">-- Sila Pilih --</option>
-                                    <?php foreach($schools as $s): ?>
-                                        <option value="<?= $s['id'] ?>" 
-                                                data-hd="<?= $s['default_hd_id'] ?>"
-                                                data-hd-name="<?= htmlspecialchars($s['hd_name'] ?? 'Tiada HD') ?>"
-                                                data-ppd="<?= htmlspecialchars(strtoupper($s['zone_code'] ?? '')) ?>"
-                                                data-students="<?= $s['student_count'] ?>"
-                                                data-sap="<?= htmlspecialchars($s['sap_no'] ?? '') ?>">
-                                            <?= htmlspecialchars($s['school_code']) ?> - <?= htmlspecialchars($s['school_name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">HD Bertanggungjawab</label>
-                                <input type="text" id="disp_hd_name" class="form-control read-only-field" readonly>
-                            </div>
-                        </div>
-
-                        <div class="row g-2 mb-4">
-                            <div class="col-md-2">
-                                <label class="form-label">Murid</label>
-                                <input type="text" id="disp_students" class="form-control read-only-field text-center" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">SAP No</label>
-                                <input type="text" id="disp_sap" class="form-control read-only-field text-center" readonly>
-                            </div>
-                            <div class="col-md-1">
-                                <label class="form-label text-primary">TP(1)</label>
-                                <input type="number" id="bil_tp" class="form-control fw-bold text-center border-primary" value="44" oninput="updateQuota()"> 
-                            </div>
-                            <div class="col-md-1">
-                                <label class="form-label text-success">TP(2)</label>
-                                <input type="number" id="bil_tp_2" class="form-control fw-bold text-center border-success" value="0" oninput="updateQuota()"> 
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Jumlah Pesanan (Pcs)</label>
-                                <input type="text" id="calc_packs_small" class="form-control read-only-field text-center" style="font-size: 1.1rem; border: 2px solid var(--mms-blue);" readonly>
-                            </div>
-                        </div>
-
-                        <div class="picking-box shadow-sm mb-4">
-                            <div class="small opacity-75 mb-2" style="font-size: 0.8rem; font-family: sans-serif; color: white;">ARAHAN PICKING (WAREHOUSE)</div>
-                            <span id="pick_plt">0</span> <small>PLT</small> &nbsp;|&nbsp; 
-                            <span id="pick_ctn">0</span> <small>CTN</small> &nbsp;|&nbsp; 
-                            <span id="pick_pcs">0</span> <small>PCS</small>
-                        </div>
-
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-7">
-                                <label class="form-label fw-bold text-primary"><i class="bi bi-layer-backward me-1"></i> Pilih Batch (FEFO Lalai)</label>
-                                <select name="inventory_batch_id" class="form-select select2" required>
-                                    <?php if (empty($batches)): ?>
-                                        <option value="" disabled selected>⚠️ Tiada Stok PSS Tersedia</option>
-                                    <?php else: ?>
-                                        <?php foreach($batches as $b): ?>
-                                             <option value="<?= $b['id'] ?>">
-                                                 Batch: <?= htmlspecialchars($b['batch_no'] ?: 'Tiada Kod') ?> | Baki: <?= $b['qty_on_hand'] ?> ctn | Luput: <?= $b['expiry_date'] ? date('d/m/y', strtotime($b['expiry_date'])) : 'Tiada Tarikh' ?>
-                                             </option>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold text-danger"><i class="bi bi-truck me-1"></i> No. Plat Kenderaan</label>
-                                <input type="text" name="vehicle_plate" class="form-control text-uppercase fw-bold border-danger-subtle" placeholder="e.g. VDU 7677" required>
-                            </div>
-                        </div>
-
-                        <input type="hidden" name="qty" id="real_qty_cartons">
-                        <input type="hidden" name="delivery_date" value="<?= date('Y-m-d') ?>">
-
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-mms btn-lg fw-bold py-3 shadow">SAHKAN & CETAK DO</button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card mb-4 border-0" id="hd_school_list_card" style="display:none;">
-                <div class="card-header bg-info d-flex justify-content-between align-items-center">
-                    <span>🏫 SENARAI SEKOLAH</span>
-                    <span class="badge bg-white text-dark" id="hd_school_count_badge">0</span>
-                </div>
-                <div class="card-body p-0 scrolled-table-container border">
-                    <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem;">
-                        <thead class="bg-light sticky-top">
-                            <tr>
-                                <th class="ps-3">Kod</th>
-                                <th>Nama Sekolah</th>
-                                <th class="text-end pe-3">Murid</th>
-                            </tr>
-                        </thead>
-                        <tbody id="hd_school_table_body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card border-0">
-                <div class="card-header bg-secondary text-white">🕒 REKOD TERKINI</div>
-                <div class="card-body p-0 border">
-                    <table class="table table-sm mb-0" style="font-size: 0.8rem;">
-                        <tbody>
-                            <?php foreach($recent_deliveries as $row): ?>
-                            <tr>
-                                <td class="ps-3 fw-bold text-primary"><?= htmlspecialchars($row['do_number']) ?></td>
-                                <td class="text-muted"><?= date('d/m', strtotime($row['delivery_date'])) ?></td>
-                                <td class="text-truncate" style="max-width: 150px;"><?= htmlspecialchars($row['school_name']) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
-
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    const schoolsData = <?= json_encode($schools); ?>;
-    
-    $(document).ready(function() {
-        $('.select2').select2({ width: '100%' });
-        filterSchools(); 
-    });
+    const currentDealer = '<?= $username ?>';
+    const currentRole = '<?= $role ?>';
+    const PALLET_SIZE = 144;
+    let schoolsData = [];
 
-    function filterSchools() {
-        let selectedPPD = $('#ppd_filter').val(); 
-        let selectedHD = $('#hd_filter').val();   
-        let $schoolSelect = $('#school_select');
-        let hdTotalSchools = 0, hdTotalStudents = 0;
+    function showToast(msg) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.innerText = "✅ " + msg;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 2500);
+    }
+
+    function formatTarikhCantik(dateStr) {
+        if (!dateStr || dateStr === "Tiada Tarikh" || dateStr === "0000-00-00") return "Tiada Tarikh";
+        const d = new Date(dateStr);
+        const hari = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
+        const bulan = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogos", "Sep", "Okt", "Nov", "Dis"];
+        return `${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}, ${hari[d.getDay()]}`;
+    }
+
+    function calcFullMuatan(ctnTotal, pcsExtra = 0) {
+        let totalCtn = Number(ctnTotal);
+        let extraPcs = Number(pcsExtra);
+        if (extraPcs >= 24) {
+            totalCtn += Math.floor(extraPcs / 24);
+            extraPcs = extraPcs % 24;
+        }
+        const pallet = Math.floor(totalCtn / PALLET_SIZE);
+        const bakiCtn = totalCtn % PALLET_SIZE;
+        let result = [];
+        if (pallet > 0) result.push(`${pallet} pallet`);
+        if (bakiCtn > 0 || (pallet === 0 && extraPcs === 0)) result.push(`${bakiCtn} ctn`);
+        if (extraPcs > 0) result.push(`${extraPcs} pcs`);
+        return "(" + result.join(' + ') + ")";
+    }
+
+    async function loadDataFromServer() {
+        try {
+            const r = await fetch(`api_pss.php?action=get_schools&dealer=${currentDealer}&role=${currentRole}&t=${Date.now()}`);
+            const res = await r.json();
+            schoolsData = Array.isArray(res) ? res.map(s => ({
+                ...s,
+                isDelivered: s.isDelivered == 1,
+                isDocSigned: s.isDocSigned == 1
+            })) : [];
+            processAndRender();
+        } catch (e) {
+            console.error("Gagal memuatkan data PSS dari pelayan.");
+        }
+    }
+
+    function processAndRender() {
+        const container = document.getElementById('mainDisplay');
+        container.innerHTML = "";
         
-        $schoolSelect.find('option').each(function() {
-            let val = $(this).val();
-            if (val === "") return; 
-            let hdId = $(this).data('hd'), schoolPPD = ($(this).data('ppd') || '').toUpperCase();
-            let matchPPD = (selectedPPD === 'all') || (schoolPPD === selectedPPD);
-            let matchHD = (selectedHD === 'all') || (hdId == selectedHD);
-
-            if (matchPPD && matchHD) {
-                $(this).prop('disabled', false);
-                hdTotalSchools++;
-                hdTotalStudents += parseInt($(this).data('students')) || 0;
-            } else {
-                $(this).prop('disabled', true);
-            }
-        });
-
-        if ($schoolSelect.find(':selected').prop('disabled')) { $schoolSelect.val('').trigger('change'); } 
-        else { $schoolSelect.trigger('change.select2'); }
-
-        let totalTp = (parseInt($('#bil_tp').val()) || 0) + (parseInt($('#bil_tp_2').val()) || 0);
-        $('#hd_total_schools').text(hdTotalSchools);
-        $('#hd_total_students').text(hdTotalStudents.toLocaleString());
-        $('#hd_total_packs').text((hdTotalStudents * totalTp).toLocaleString());
-
-        updateSidebarTable(selectedPPD, selectedHD);
-    }
-
-    function updateSidebarTable(selectedPPD, selectedHD) {
-        let $tableBody = $('#hd_school_table_body'), $card = $('#hd_school_list_card'), count = 0;
-        $tableBody.empty(); 
-        if (selectedHD === 'all' && selectedPPD === 'all') { $card.hide(); return; }
-
-        schoolsData.forEach(function(s) {
-            let matchPPD = (selectedPPD === 'all') || ((s.zone_code || '').toUpperCase() === selectedPPD);
-            let matchHD = (selectedHD === 'all') || (s.default_hd_id == selectedHD);
-            if (matchPPD && matchHD) {
-                count++;
-                $tableBody.append(`<tr><td class="ps-3 text-muted">${s.school_code}</td><td class="text-truncate" style="max-width:150px;">${s.school_name}</td><td class="text-end pe-3 fw-bold">${s.student_count}</td></tr>`);
-            }
-        });
-        $('#hd_school_count_badge').text(count);
-        $card.toggle(count > 0);
-    }
-
-    function updateQuota() {
-        let selected = $('#school_select').find(':selected');
-        if (!selected.val()) {
-             $('.read-only-field').val('');
-             $('#pick_plt, #pick_ctn, #pick_pcs').text('0');
-             return;
+        let fD = schoolsData;
+        if (currentRole !== 'admin' && currentRole !== 'staff') {
+            fD = fD.filter(x => x.dealer === currentDealer);
         }
 
-        let studentCount = parseInt(selected.data('students')) || 0;
-        $('#disp_students').val(studentCount);
-        $('#disp_sap').val(selected.data('sap') || '-');
-        $('#disp_hd_name').val(selected.data('hd-name'));
-
-        let totalPacks = studentCount * ((parseInt($('#bil_tp').val()) || 0) + (parseInt($('#bil_tp_2').val()) || 0));
-        $('#calc_packs_small').val(totalPacks.toLocaleString() + " PCS");
+        // Update real-time progress calculations
+        let totalCtn = 0, doneCtn = 0;
+        let totalSch = fD.length, doneSch = 0;
         
-        // Logic Packing
-        let plt = Math.floor(totalPacks / 3456); // 24 * 144
-        let rem = totalPacks % 3456;
-        let ctn = Math.floor(rem / 24);
-        let pcs = rem % 24;
+        fD.forEach(s => {
+            const c = Number(s.totalCartons) || 0;
+            totalCtn += c;
+            if (s.isDelivered) {
+                doneCtn += c;
+                doneSch++;
+            }
+        });
 
-        $('#pick_plt').text(plt); $('#pick_ctn').text(ctn); $('#pick_pcs').text(pcs);
-        $('#real_qty_cartons').val(totalPacks / 24);
+        const percent = totalCtn ? Math.round((doneCtn / totalCtn) * 100) : 0;
+        document.getElementById('overallBar').style.width = percent + "%";
+        document.getElementById('overallText').innerText = `Progres Kitaran: ${percent}% (${doneCtn}/${totalCtn} Carton)`;
+
+        document.getElementById('statsSchools').innerText = totalSch;
+        document.getElementById('statsDelivered').innerText = doneSch;
+        document.getElementById('statsCartons').innerText = totalCtn;
+
+        // Group by Date
+        const grp = fD.reduce((g, s) => {
+            const d = s.plan_date || "Tiada Tarikh";
+            (g[d] = g[d] || []).push(s);
+            return g;
+        }, {});
+
+        Object.keys(grp).sort().forEach(dt => {
+            let rC = 0, rP = 0;
+            grp[dt].forEach(s => {
+                rC += Number(s.totalCartons);
+                rP += Number(s.extraPacks);
+            });
+
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'day-section';
+            dayDiv.innerHTML = `
+                <div class="day-header">📅 ${formatTarikhCantik(dt)}</div>
+                <div class="day-summary">
+                    <i class="bi bi-box-seam-fill"></i> Muatan Harian: ${calcFullMuatan(rC, rP)}
+                </div>
+                <div class="table-wrapper">
+                    <table class="align-middle">
+                        <thead>
+                            <tr>
+                                <th>Sekolah / Lokasi</th>
+                                <th class="text-center" style="width:100px;">Penghantaran</th>
+                                <th class="text-center" style="width:100px;">SAP (Kunci)</th>
+                                <th class="text-end" style="width:180px;">Perancangan Tarikh</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${grp[dt].map(s => {
+                                const extraText = Number(s.extraPacks) > 0 ? ` + ${s.extraPacks} pek` : "";
+                                return `
+                                <tr style="${s.isDelivered ? 'background:#ecfdf5' : ''}">
+                                    <td>
+                                        <span class="badge bg-secondary font-monospace fs-7 me-1">${s.co_no}</span>
+                                        <strong>${s.name}</strong>
+                                        <br>
+                                        <small class="text-muted">${s.district} | Baki: ${s.totalCartons} ctn${extraText} | HD: ${s.dealer.toUpperCase()}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input" ${s.isDelivered ? 'checked' : ''} 
+                                               onchange="updateRec('${s.id}', 'isDelivered', this.checked)">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input" ${s.isDocSigned ? 'checked' : ''} 
+                                               onchange="updateRec('${s.id}', 'isDocSigned', this.checked)">
+                                    </td>
+                                    <td class="text-end text-muted small fw-bold">
+                                        ${s.plan_date || 'Tiada Tarikh'}
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+            container.appendChild(dayDiv);
+        });
+
+        if (Object.keys(grp).length === 0) {
+            container.innerHTML = '<p class="text-center text-muted py-5">Tiada sekolah ditugaskan untuk anda pada kitaran ini.</p>';
+        }
     }
+
+    async function updateRec(id, field, value) {
+        const s = schoolsData.find(x => x.id === id);
+        if (!s) return;
+        
+        s[field] = value;
+        if (field === 'isDelivered' && value && !s.delivery_date) {
+            s.delivery_date = new Date().toISOString().split('T')[0];
+        }
+
+        try {
+            await fetch('api_pss.php?action=save_schools', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify([s])
+            });
+            showToast(`Kemaskini berjaya: ${s.name}`);
+            processAndRender();
+        } catch (e) {
+            showToast('Gagal mengemas kini rekod.');
+        }
+    }
+
+    window.onload = loadDataFromServer;
 </script>
+
 <?php require_once 'includes/footer.php'; ?>
