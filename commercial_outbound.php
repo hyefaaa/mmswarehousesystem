@@ -15,74 +15,153 @@ require_once 'includes/header.php';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-    /* Header Styling */
-    .mms-header { 
-        background: var(--mms-navy); 
-        color: white; 
-        padding: 1.5rem 0; 
-        border-bottom: 4px solid var(--mms-cyan);
-        margin-bottom: 2rem;
-        margin-top: -1.5rem; /* pull up under navbar */
-    }
-
-    /* Card Styling */
-    .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .section-title { 
-        font-size: 0.9rem; 
-        font-weight: 700; 
-        color: var(--mms-navy); 
-        text-transform: uppercase; 
-        letter-spacing: 1px;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-    }
-    .section-title i { margin-right: 10px; color: var(--mms-cyan); }
-
-    /* Table Styling */
-    .item-row td { padding: 12px 15px; vertical-align: middle; }
-    
-    /* Form Elements */
-    .form-control, .form-select {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 10px 15px;
-        transition: all 0.2s;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--mms-cyan);
-        box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.1);
+    body {
+        background-color: #f8fafc;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
     
-    .product-select { font-weight: 600; color: var(--mms-navy); }
-    
-    /* Buttons */
-    .btn-mms-confirm { 
-        background: var(--mms-emerald, #10b981); 
-        color: white; 
-        font-weight: 700; 
-        padding: 12px;
-        border-radius: 10px;
-        border: none;
+    /* Importer Section Container */
+    .importer-card {
+        background: #ffffff;
+        border: 2px dashed #0284c7;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
         transition: all 0.3s;
     }
-    .btn-mms-confirm:hover { 
-        background: #059669; 
-        transform: translateY(-2px); 
-        box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+    .importer-card:hover {
+        border-color: #0ea5e9;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Headers */
+    .block-header {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.25rem;
+    }
+    .block-header i {
+        color: #0ea5e9;
+        margin-right: 8px;
+    }
+    
+    /* Custom form elements */
+    .custom-input, .form-control, .form-select {
+        border: 1px solid #cbd5e1;
+        border-radius: 10px !important;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #1e293b;
+        background-color: #ffffff;
+        transition: all 0.2s;
+    }
+    .custom-input:focus, .form-control:focus, .form-select:focus {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+        outline: none;
+    }
+    
+    .input-group-text {
+        border: 1px solid #cbd5e1;
+        border-radius: 10px 0 0 10px !important;
+        background-color: #f1f5f9;
+        color: #64748b;
+    }
+    
+    /* Table Styling */
+    .modern-table-container {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        background: #ffffff;
+    }
+    .modern-table {
+        margin-bottom: 0;
+    }
+    .modern-table th {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.75px;
+        padding: 14px 20px !important;
+        border: none;
+    }
+    .modern-table td {
+        padding: 14px 20px !important;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .modern-table tr:last-child td {
+        border-bottom: none;
+    }
+    .modern-table tr:hover {
+        background-color: #f8fafc;
+    }
+    
+    /* Buttons */
+    .btn-process {
+        background: linear-gradient(135deg, #0284c7, #0369a1);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        transition: all 0.2s;
+    }
+    .btn-process:hover {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(2, 132, 199, 0.2);
         color: white;
     }
     
     .btn-add-row {
-        color: var(--mms-cyan);
-        font-weight: 600;
-        border: 2px dashed #cbd5e1;
-        border-radius: 10px;
+        color: #0284c7;
+        background-color: #f0f9ff;
+        border: 2px dashed #bae6fd;
+        border-radius: 12px;
+        padding: 12px;
+        font-weight: 700;
         width: 100%;
-        padding: 10px;
         transition: all 0.2s;
     }
-    .btn-add-row:hover { background: #f1f5f9; border-color: var(--mms-cyan); }
+    .btn-add-row:hover {
+        background-color: #e0f2fe;
+        border-color: #0284c7;
+        color: #0369a1;
+        transform: translateY(-1px);
+    }
+    
+    .btn-mms-confirm {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        font-weight: 800;
+        font-size: 1.1rem;
+        padding: 16px;
+        border-radius: 14px;
+        border: none;
+        box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+        transition: all 0.3s;
+    }
+    .btn-mms-confirm:hover {
+        background: linear-gradient(135deg, #34d399, #059669);
+        transform: translateY(-2px);
+        box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.35);
+        color: white;
+    }
+    
+    /* Alert styles inside dropdowns */
+    .batch-select option[disabled] {
+        color: #ef4444;
+        font-weight: 600;
+        background-color: #fef2f2;
+    }
 </style>
 
 <div class="page-header mb-4">
@@ -103,100 +182,105 @@ require_once 'includes/header.php';
 <div class="container-fluid px-4 pb-5">
     
     <!-- NEW: Import Invoice (Hybrid Approach) -->
-    <div class="card shadow-sm border-0 mb-4 bg-light-subtle">
-        <div class="card-body p-4">
-            <h5 class="fw-bold mb-2 text-primary d-flex align-items-center">
-                <i class="bi bi-file-earmark-arrow-up-fill me-2"></i> Import Invoice / DO (Hybrid Importer)
-            </h5>
-            <p class="text-muted small mb-3">Muat naik fail invois atau DO harian (format .xlsx, .xls, .csv, atau .pdf) untuk mengisi senarai produk, kuantiti, tarikh & maklumat pelanggan secara automatik.</p>
-            
-            <div class="row align-items-center g-3">
-                <div class="col-md-9 col-sm-8">
-                    <input type="file" id="invoice_file_input" class="form-control form-control-lg border-primary-subtle" accept=".xlsx, .xls, .csv, .pdf">
-                </div>
-                <div class="col-md-3 col-sm-4">
-                    <button type="button" id="btn_process_invoice" class="btn btn-primary btn-lg w-100 fw-bold py-2 shadow-sm">
-                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> PROSES FAIL
-                    </button>
-                </div>
+    <div class="importer-card p-4 mb-4">
+        <h5 class="fw-bold mb-2 text-primary d-flex align-items-center">
+            <i class="bi bi-file-earmark-arrow-up-fill me-2"></i> Import Invoice / DO (Hybrid Importer)
+        </h5>
+        <p class="text-muted small mb-3">Muat naik fail invois atau DO harian (format .xlsx, .xls, .csv, atau .pdf) untuk mengisi senarai produk, kuantiti, tarikh & maklumat pelanggan secara automatik.</p>
+        
+        <div class="row align-items-center g-3">
+            <div class="col-md-9 col-sm-8">
+                <input type="file" id="invoice_file_input" class="form-control form-control-lg" accept=".xlsx, .xls, .csv, .pdf">
+            </div>
+            <div class="col-md-3 col-sm-4">
+                <button type="button" id="btn_process_invoice" class="btn btn-process btn-lg w-100 py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                    <i class="bi bi-lightning-charge-fill"></i> PROSES FAIL
+                </button>
             </div>
         </div>
     </div>
 
-    <form action="api/save_commercial_outbound.php" method="POST" id="outboundForm" class="card main-card border-0">
+    <form action="api/save_commercial_outbound.php" method="POST" id="outboundForm">
         
-        <div class="section-title"><i class="bi bi-info-circle-fill"></i> Delivery Information</div>
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted">DELIVERY DATE</label>
-                <input type="date" name="out_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted">CUSTOMER / OUTLET</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="bi bi-shop"></i></span>
-                    <input type="text" name="customer_name" class="form-control" placeholder="e.g. Lotus's Kuala Terengganu" required>
+        <!-- SECTION 1: Delivery Information -->
+        <div class="card shadow-sm border-0 mb-4 p-4">
+            <div class="block-header"><i class="bi bi-info-circle-fill"></i> Delivery Information</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">DELIVERY DATE</label>
+                    <input type="date" name="out_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted">DO / INVOICE REF</label>
-                <input type="text" name="doc_ref" class="form-control" placeholder="e.g. DO-2026-0450">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted">VEHICLE / DRIVER</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="bi bi-truck"></i></span>
-                    <input type="text" name="vehicle" class="form-control" placeholder="e.g. WWW 9999 (Ali)">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">CUSTOMER / OUTLET</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="bi bi-shop"></i></span>
+                        <input type="text" name="customer_name" class="form-control" placeholder="e.g. Lotus's Kuala Terengganu" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">DO / INVOICE REF</label>
+                    <input type="text" name="doc_ref" class="form-control" placeholder="e.g. DO-2026-0450">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">VEHICLE / DRIVER</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="bi bi-truck"></i></span>
+                        <input type="text" name="vehicle" class="form-control" placeholder="e.g. WWW 9999 (Ali)">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="section-title"><i class="bi bi-cart-check-fill"></i> Items to Outbound</div>
-        <div class="table-responsive mb-3 border rounded-3">
-            <table class="table align-middle mb-0" id="outTable">
-                <thead>
-                    <tr class="table-light text-secondary small fw-bold">
-                        <th class="ps-3">Product Selection</th>
-                        <th width="25%">Batch / Lot No.</th>
-                        <th width="15%" class="text-center">Qty (Carton)</th>
-                        <th width="10%" class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="outBody">
-                    <tr class="item-row">
-                        <td class="ps-3">
-                            <select name="items[0][product_id]" class="form-select product-select" required>
-                                <option value="">-- Choose Product --</option>
-                                <?php foreach($products as $p): ?>
-                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td>
-                            <select name="items[0][batch]" class="form-select form-select-sm batch-select text-center fw-bold" onchange="validateBatchStock(this)">
-                                <option value="">-- Auto FEFO --</option>
-                            </select>
-                        </td>
-                        <td>
-                            <input type="number" name="items[0][qty]" class="form-control form-control-sm fw-bold text-center border-primary-subtle qty-input" required min="1" placeholder="0" oninput="validateBatchStock(this)">
-                        </td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeRow(this)">
-                                <i class="bi bi-trash3 fs-5"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="mb-4">
-            <button type="button" class="btn btn-add-row" onclick="addRow()">
-                <i class="bi bi-plus-lg me-2"></i> Add Another Product
-            </button>
+        <!-- SECTION 2: Items to Outbound -->
+        <div class="card shadow-sm border-0 mb-4 p-4">
+            <div class="block-header"><i class="bi bi-cart-check-fill"></i> Items to Outbound</div>
+            
+            <div class="modern-table-container mb-3">
+                <table class="table modern-table align-middle" id="outTable">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Product Selection</th>
+                            <th width="30%">Batch / Lot No.</th>
+                            <th width="15%" class="text-center">Qty (Carton)</th>
+                            <th width="10%" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="outBody">
+                        <tr class="item-row">
+                            <td class="ps-4">
+                                <select name="items[0][product_id]" class="form-select product-select" required>
+                                    <option value="">-- Choose Product --</option>
+                                    <?php foreach($products as $p): ?>
+                                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="items[0][batch]" class="form-select form-select-sm batch-select text-center fw-bold" onchange="validateBatchStock(this)">
+                                    <option value="">-- Auto FEFO --</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" name="items[0][qty]" class="form-control form-control-sm fw-bold text-center qty-input" required min="1" placeholder="0" oninput="validateBatchStock(this)">
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeRow(this)">
+                                    <i class="bi bi-trash3 fs-5"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mb-2">
+                <button type="button" class="btn btn-add-row" onclick="addRow()">
+                    <i class="bi bi-plus-lg me-2"></i> Add Another Product
+                </button>
+            </div>
         </div>
 
-        <div class="d-grid shadow-sm">
+        <div class="d-grid shadow-sm mb-5">
             <button type="submit" class="btn btn-mms-confirm btn-lg py-3">
                 <i class="bi bi-send-check-fill me-2"></i> CONFIRM & PROCESS OUTBOUND
             </button>
@@ -224,7 +308,7 @@ require_once 'includes/header.php';
                         <option value="">-- Auto FEFO --</option>
                     </select>
                 </td>
-                <td><input type="number" name="items[${rowCount}][qty]" class="form-control form-control-sm fw-bold text-center border-primary-subtle qty-input" required min="1" placeholder="0" oninput="validateBatchStock(this)"></td>
+                <td><input type="number" name="items[${rowCount}][qty]" class="form-control form-control-sm fw-bold text-center qty-input" required min="1" placeholder="0" oninput="validateBatchStock(this)"></td>
                 <td class="text-center pe-4">
                     <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeRow(this)">
                         <i class="bi bi-trash3 fs-5"></i>
@@ -662,7 +746,7 @@ require_once 'includes/header.php';
                         <option value="">-- Auto FEFO --</option>
                     </select>
                 </td>
-                <td><input type="number" name="items[${rowCount}][qty]" class="form-control form-control-sm fw-bold text-center border-primary-subtle qty-input" required min="1" value="${qty}" oninput="validateBatchStock(this)"></td>
+                <td><input type="number" name="items[${rowCount}][qty]" class="form-control form-control-sm fw-bold text-center qty-input" required min="1" value="${qty}" oninput="validateBatchStock(this)"></td>
                 <td class="text-center pe-4">
                     <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeRow(this)">
                         <i class="bi bi-trash3 fs-5"></i>
