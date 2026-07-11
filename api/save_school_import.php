@@ -46,24 +46,41 @@ try {
     $header = array_map('trim', $header);
     $header = array_map('strtoupper', $header);
     
-    // Find Indexes
-    $idx_code = array_search('KOD SEKOLAH', $header);
-    $idx_name = array_search('NAMA SEKOLAH', $header);
-    $idx_stud = array_search('BIL PELAJAR', $header);
-    $idx_addr = array_search('ALAMAT', $header);
+    // Helper to dynamically find header index with variations
+    function findHeaderIndex($needles, $header) {
+        foreach ($needles as $needle) {
+            $idx = array_search($needle, $header);
+            if ($idx !== false) return $idx;
+        }
+        // Substring fallback (case-insensitive checks since headers are normalized to uppercase)
+        foreach ($needles as $needle) {
+            foreach ($header as $index => $col) {
+                if ($col !== '' && (strpos($col, $needle) !== false || strpos($needle, $col) !== false)) {
+                    return $index;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Find Indexes with robust variations
+    $idx_code     = findHeaderIndex(['KOD SEKOLAH', 'SCHOOL CODE', 'SCHOOL_CODE', 'KOD_SEKOLAH', 'CODE'], $header);
+    $idx_name     = findHeaderIndex(['NAMA SEKOLAH', 'SCHOOL NAME', 'SCHOOL_NAME', 'NAME'], $header);
+    $idx_stud     = findHeaderIndex(['BIL PELAJAR', 'BIL MURID', 'STUDENT COUNT', 'STUDENTS', 'BIL_PELAJAR', 'BIL_MURID', 'TOTAL STUDENTS'], $header);
+    $idx_addr     = findHeaderIndex(['ALAMAT', 'ADDRESS', 'ALAMAT SEKOLAH'], $header);
 
     // TARGET COLUMNS
-    $idx_zon  = array_search('PPD', $header);     
-    $idx_hd   = array_search('NAMA HD', $header); 
+    $idx_zon      = findHeaderIndex(['PPD', 'ZONE', 'ZON', 'KOD PPD', 'KOD_PPD'], $header);     
+    $idx_hd       = findHeaderIndex(['NAMA HD', 'HUB DEALER', 'DEALER', 'HD NAME', 'HD', 'NAMA_HD'], $header); 
 
     // Contract Columns
-    $idx_co       = array_search('CO NUMBER', $header);
-    $idx_sap      = array_search('NO SAP', $header);
-    $idx_tender   = array_search('NO TENDER', $header);
-    $idx_contract = array_search('NO KONTRAK', $header);
+    $idx_co       = findHeaderIndex(['CO NUMBER', 'CO NO', 'NO CO', 'CO_NUMBER', 'CO_NO'], $header);
+    $idx_sap      = findHeaderIndex(['NO SAP', 'SAP NO', 'NO_SAP', 'SAP_NO', 'SAP'], $header);
+    $idx_tender   = findHeaderIndex(['NO TENDER', 'TENDER NO', 'NO_TENDER', 'TENDER_NO', 'TENDER'], $header);
+    $idx_contract = findHeaderIndex(['NO KONTRAK', 'CONTRACT NO', 'NO_KONTRAK', 'CONTRACT_NO', 'CONTRACT'], $header);
 
     if ($idx_code === false) {
-        die("❌ Error: Could not find 'KOD SEKOLAH' column in CSV.");
+        die("❌ Error: Could not find 'KOD SEKOLAH' or 'SCHOOL CODE' column in CSV.");
     }
 
     // 2. Fetch all HDs

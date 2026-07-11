@@ -282,16 +282,67 @@ require_once 'includes/header.php';
         rowCount++;
     }
 
-    document.getElementById('photo_input').onchange = e => {
+    let compressedFiles = [];
+
+    document.getElementById('photo_input').onchange = async e => {
         const cont = document.getElementById('preview_container');
         cont.innerHTML = '';
-        Array.from(e.target.files).forEach(f => {
+        compressedFiles = [];
+        
+        const files = Array.from(e.target.files);
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Render loading or empty thumbnail first
             const img = document.createElement('img');
-            img.src = URL.createObjectURL(f);
             img.className = 'preview-thumb';
             cont.appendChild(img);
-        });
+            
+            try {
+                // Resize image to max 800px width with 0.75 quality compression
+                const compressedBlob = await compressImage(file, 800, 0.75);
+                compressedFiles.push(new File([compressedBlob], file.name, { type: 'image/jpeg' }));
+                img.src = URL.createObjectURL(compressedBlob);
+            } catch (err) {
+                console.error("Compression failed, using original file: ", err);
+                compressedFiles.push(file);
+                img.src = URL.createObjectURL(file);
+            }
+        }
     };
+
+    function compressImage(file, maxWidth, quality) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = event => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.toBlob(blob => {
+                        if (blob) resolve(blob);
+                        else reject(new Error("Canvas export failed"));
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = err => reject(err);
+            };
+            reader.onerror = err => reject(err);
+        });
+    }
 
     document.getElementById('spoilageForm').onsubmit = function(e) {
         e.preventDefault();
@@ -305,11 +356,22 @@ require_once 'includes/header.php';
         }).then(res => {
             if(res.isConfirmed) {
                 Swal.fire({ title: 'Menghantar...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                fetch(this.action, { method: 'POST', body: new FormData(this) })
+                
+                // Build form data manually to swap raw files with compressed ones
+                const fd = new FormData(this);
+                fd.delete('spoilage_photos[]');
+                compressedFiles.forEach(file => {
+                    fd.append('spoilage_photos[]', file);
+                });
+
+                fetch(this.action, { method: 'POST', body: fd })
                 .then(r => r.json())
                 .then(data => {
                     if(data.status==='success') Swal.fire('Berjaya!', data.message, 'success').then(()=>location.href='index.php');
                     else Swal.fire('Ralat', data.message, 'error');
+                })
+                .catch(err => {
+                    Swal.fire('Ralat', 'Gagal memuat naik data laporan.', 'error');
                 });
             }
         });

@@ -54,13 +54,13 @@ try {
         if (strtoupper($row[0]) == 'BIL' && !$header_found) {
             $header_found = true;
             
-            // Map columns dynamically
+            // Map columns dynamically with robust variations
             foreach ($row as $index => $colName) {
                 $colName = strtoupper(trim($colName));
-                if (strpos($colName, 'KOD SEKOLAH') !== false) {
+                if (strpos($colName, 'KOD SEKOLAH') !== false || strpos($colName, 'SCHOOL CODE') !== false || strpos($colName, 'SCHOOL_CODE') !== false || $colName === 'CODE') {
                     $col_map['code'] = $index;
                 }
-                if (strpos($colName, 'BIL MURID') !== false) {
+                if (strpos($colName, 'BIL MURID') !== false || strpos($colName, 'BIL PELAJAR') !== false || strpos($colName, 'STUDENT COUNT') !== false || strpos($colName, 'STUDENTS') !== false || $colName === 'COUNT') {
                     $col_map['count'] = $index;
                 }
             }
