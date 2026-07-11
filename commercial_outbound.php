@@ -223,27 +223,20 @@ require_once 'includes/header.php';
         <div class="card shadow-sm border-0 mb-4 p-4">
             <div class="block-header"><i class="bi bi-info-circle-fill"></i> Delivery Information</div>
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted">DELIVERY DATE</label>
                     <input type="date" name="out_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted">CUSTOMER / OUTLET</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light"><i class="bi bi-shop"></i></span>
                         <input type="text" name="customer_name" class="form-control" placeholder="e.g. Lotus's Kuala Terengganu" required>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted">DO / INVOICE REF</label>
                     <input type="text" name="doc_ref" class="form-control" placeholder="e.g. DO-2026-0450">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-muted">VEHICLE / DRIVER</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light"><i class="bi bi-truck"></i></span>
-                        <input type="text" name="vehicle" class="form-control" placeholder="e.g. WWW 9999 (Ali)">
-                    </div>
                 </div>
             </div>
         </div>
@@ -613,7 +606,15 @@ require_once 'includes/header.php';
             
             if (rowStr.includes('BILL TO') || rowStr.includes('CUSTOMER') || rowStr.includes('DELIVERY TO')) {
                 if (isPDF && rows[r+1]) {
-                    customerName = String(rows[r+1][0] || '').trim();
+                    let part1 = String(rows[r+1][0] || '').trim();
+                    let part2 = '';
+                    if (rows[r+2] && rows[r+2][0]) {
+                        const p2 = String(rows[r+2][0] || '').trim();
+                        if (!/^\d+/i.test(p2) && !p2.toUpperCase().includes('JALAN') && !p2.toUpperCase().includes('TAMAN') && !p2.toUpperCase().includes('NO.')) {
+                            part2 = p2;
+                        }
+                    }
+                    customerName = (part1 + ' ' + part2).trim();
                 } else {
                     for (let offset = 1; offset <= 3; offset++) {
                         if (rows[r+offset]) {

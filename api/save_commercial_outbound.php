@@ -11,7 +11,7 @@ try {
     $date = $_POST['out_date'];
     $customer = $_POST['customer_name'];
     $ref = $_POST['doc_ref'];
-    $vehicle = $_POST['vehicle'];
+    $vehicle = $_POST['vehicle'] ?? '';
     $items = $_POST['items'] ?? [];
 
     // 1. Create Header
