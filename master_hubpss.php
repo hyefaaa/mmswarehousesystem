@@ -777,8 +777,9 @@ require_once 'includes/header.php';
 
         const dealers = Object.keys(byDealer).sort();
         let grandTotalCtn = 0, grandDoneCtn = 0, grandTotalExtra = 0, grandDoneExtra = 0;
+        let grandTotalSchools = 0, grandDoneSchools = 0;
 
-        tbody.innerHTML = dealers.map(d => {
+        const rowsHtml = dealers.map(d => {
             const r = byDealer[d];
             const pct = r.total > 0 ? Math.round((r.done / r.total) * 100) : 0;
             const bakiCtn = r.totalCtn - r.doneCtn;
@@ -791,6 +792,8 @@ require_once 'includes/header.php';
             grandDoneCtn    += r.doneCtn;
             grandTotalExtra += r.extraTotal;
             grandDoneExtra  += r.extraDone;
+            grandTotalSchools += r.total;
+            grandDoneSchools  += r.done;
 
             return `<tr>
                 <td><strong class="text-uppercase">${d}</strong></td>
@@ -802,6 +805,28 @@ require_once 'includes/header.php';
                 <td style="color:${isComplete ? '#10b981' : '#ef4444'};font-weight:700;">${bakiStr}</td>
             </tr>`;
         }).join('');
+
+        const grandPercent = grandTotalCtn ? Math.round((grandDoneCtn / grandTotalCtn) * 100) : 0;
+        const grandBakiCtn = grandTotalCtn - grandDoneCtn;
+        const grandBakiEx  = grandTotalExtra - grandDoneExtra;
+        const grandBakiStr = calcFullMuatan(grandBakiCtn, grandBakiEx);
+        const grandComplete = grandPercent >= 100;
+
+        const totalRowHtml = `
+            <tr style="background:#f8fafc; font-weight:bold; border-top:2px solid #cbd5e1; position:sticky; bottom:0; z-index:1;">
+                <td>
+                    <span style="display:inline-block;background:#64748b;color:white;font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:6px;letter-spacing:0.5px;">TOTAL</span>
+                </td>
+                <td>
+                    <span style="color:#0f172a;font-weight:800;">${grandDoneSchools}/${grandTotalSchools}</span>
+                    <div class="dealer-progress-mini"><div class="dealer-progress-mini-bar" style="width:${grandPercent}%; background:linear-gradient(90deg,#0ea5e9,#2563eb);"></div></div>
+                </td>
+                <td style="color:${grandComplete ? '#10b981' : '#2563eb'};font-weight:800;">${grandPercent}%</td>
+                <td style="color:${grandComplete ? '#10b981' : '#ef4444'};font-weight:700;">${grandBakiStr}</td>
+            </tr>
+        `;
+
+        tbody.innerHTML = rowsHtml + totalRowHtml;
 
         if (dealers.length === 0) {
             const isMs = typeof MMS_LANG !== 'undefined' && MMS_LANG.current() === 'ms';
