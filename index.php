@@ -581,45 +581,58 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-        <!-- Analytics Table -->
+        <!-- Analytics Section with CO Filter -->
         <div class="col-12 mt-3">
-            <div style="border:2px solid #3b82f6; border-radius:16px; padding:24px; background:#fff; box-shadow:0 4px 6px -1px rgba(59,130,246,0.06);">
-                <h5 class="fw-bold mb-3" style="color:#2563eb;"><i class="bi bi-bar-chart-line-fill me-2"></i>Analytics — Kemajuan Penghantaran Sekolah PSS</h5>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead>
+            <div style="border:1px solid #e2e8f0; border-radius:18px; overflow:hidden; background:#fff; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+                <div style="background:linear-gradient(135deg,#0b2147,#1e3a5f); padding:16px 24px; display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap;">
+                    <h5 class="fw-bold mb-0 text-white" style="font-size:0.95rem;">
+                        <i class="bi bi-bar-chart-line-fill me-2" style="color:#34d399;"></i>Analytics — Kemajuan Penghantaran Sekolah PSS
+                    </h5>
+                    <select id="hdCoFilter" class="form-select form-select-sm" style="width:auto;border-radius:10px;font-weight:600;font-size:0.82rem;border:1.5px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:white;" onchange="loadHDAnalytics()">
+                        <option value="" style="color:#0f172a;">— Semua Kitaran —</option>
+                    </select>
+                </div>
+                <div style="overflow-x:auto; max-height:400px; overflow-y:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead style="position:sticky;top:0;z-index:1;">
                             <tr>
-                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px; width:130px;">Dealer</th>
-                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px;">Sekolah</th>
-                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px; width:140px;">Progress (%)</th>
-                                <th style="background:#eff6ff; color:#1e40af; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:12px 16px;">Baki Muatan</th>
+                                <th style="background:#f8fafc;color:#64748b;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;padding:12px 18px;border-bottom:2px solid #e2e8f0;width:130px;">Dealer</th>
+                                <th style="background:#f8fafc;color:#64748b;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;padding:12px 18px;border-bottom:2px solid #e2e8f0;">Sekolah</th>
+                                <th style="background:#f8fafc;color:#64748b;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;padding:12px 18px;border-bottom:2px solid #e2e8f0;width:140px;">Progress (%)</th>
+                                <th style="background:#f8fafc;color:#64748b;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;padding:12px 18px;border-bottom:2px solid #e2e8f0;">Baki Muatan</th>
                             </tr>
                         </thead>
                         <tbody id="hdDealerSummaryBody">
-                            <tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;">Memuatkan...</td></tr>
+                            <tr><td colspan="4" style="text-align:center;padding:30px;color:#94a3b8;font-size:0.88rem;"><i class="bi bi-hourglass-split me-2"></i>Memuatkan...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- PERLU / SIAP / BAKI Summary Cards -->
+        <!-- Summary Cards -->
         <div class="col-md-4">
-            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:6px solid #3b82f6 !important; border-radius:14px;">
-                <div class="stat-label text-primary">🔵 Perlu Dihantar (Total)</div>
-                <div class="stat-value text-primary" id="hdSumPerlu" style="font-size:1.1rem;">—</div>
+            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:5px solid #3b82f6 !important; border-radius:16px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:44px;height:44px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#3b82f6;"><i class="bi bi-truck-flatbed"></i></div>
+                    <div><div class="stat-label text-primary" style="font-size:0.68rem;">Perlu Dihantar (Total)</div><div id="hdSumPerlu" style="font-size:1rem;font-weight:800;color:#1d4ed8;">—</div></div>
+                </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:6px solid #10b981 !important; border-radius:14px;">
-                <div class="stat-label text-success">🟢 Siap Dihantar</div>
-                <div class="stat-value text-success" id="hdSumSiap" style="font-size:1.1rem;">—</div>
+            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:5px solid #10b981 !important; border-radius:16px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:44px;height:44px;border-radius:12px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#10b981;"><i class="bi bi-check-circle-fill"></i></div>
+                    <div><div class="stat-label text-success" style="font-size:0.68rem;">Siap Dihantar</div><div id="hdSumSiap" style="font-size:1rem;font-weight:800;color:#059669;">—</div></div>
+                </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:6px solid #ef4444 !important; border-radius:14px;">
-                <div class="stat-label text-danger">🔴 Baki Belum Hantar</div>
-                <div class="stat-value text-danger" id="hdSumBaki" style="font-size:1.1rem;">—</div>
+            <div class="card p-4 mt-2 border-0 shadow-sm" style="border-left:5px solid #ef4444 !important; border-radius:16px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:44px;height:44px;border-radius:12px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#ef4444;"><i class="bi bi-clock-history"></i></div>
+                    <div><div class="stat-label text-danger" style="font-size:0.68rem;">Baki Belum Hantar</div><div id="hdSumBaki" style="font-size:1rem;font-weight:800;color:#dc2626;">—</div></div>
+                </div>
             </div>
         </div>
 
@@ -677,16 +690,37 @@ require_once 'includes/header.php';
                 return r.join(' + ');
             }
 
+            let allData = [];
+
             async function loadHDAnalytics() {
                 try {
-                    const res = await fetch('api_pss.php?action=get_schools&dealer=' + currentDealer + '&role=' + currentRole + '&t=' + Date.now());
-                    const raw = await res.json();
-                    const data = Array.isArray(raw) ? raw.map(s => ({...s, isDelivered: s.isDelivered == 1})) : [];
+                    // Only fetch data once; re-use for filtering
+                    if (allData.length === 0) {
+                        const res = await fetch('api_pss.php?action=get_schools&dealer=' + currentDealer + '&role=' + currentRole + '&t=' + Date.now());
+                        const raw = await res.json();
+                        allData = Array.isArray(raw) ? raw.map(s => ({...s, isDelivered: s.isDelivered == 1})) : [];
 
-                    // Filter only this dealer's schools
+                        // Populate CO filter dropdown
+                        const coSel = document.getElementById('hdCoFilter');
+                        const cos = [...new Set(allData.map(s => s.co_no).filter(Boolean))].sort().reverse();
+                        cos.forEach(co => {
+                            const opt = document.createElement('option');
+                            opt.value = co; opt.textContent = 'Kitaran ' + co;
+                            opt.style.color = '#0f172a';
+                            coSel.appendChild(opt);
+                        });
+                        // Default to latest CO
+                        if (cos.length > 0) { coSel.value = cos[0]; }
+                    }
+
+                    const selectedCo = document.getElementById('hdCoFilter')?.value || '';
+                    let data = allData;
+                    if (selectedCo) data = data.filter(s => s.co_no === selectedCo);
+
+                    // Filter to current dealer if dealer role
                     const myData = currentRole === 'dealer' ? data.filter(s => s.dealer === currentDealer) : data;
 
-                    // Overall stats
+                    // Overall stats (for progress bar and top stat cards)
                     let totalCtn = 0, doneCtn = 0, totalSch = myData.length, doneSch = 0;
                     myData.forEach(s => {
                         const c = Number(s.totalCartons) || 0;
@@ -696,12 +730,12 @@ require_once 'includes/header.php';
                     const pct = totalCtn ? Math.round((doneCtn / totalCtn) * 100) : 0;
 
                     document.getElementById('hdOverallBar').style.width = pct + '%';
-                    document.getElementById('hdOverallText').innerText = 'Progres Kitaran: ' + pct + '% (' + doneCtn + '/' + totalCtn + ' Carton)';
+                    document.getElementById('hdOverallText').innerText = 'Progres Kitaran: ' + pct + '% (' + doneCtn + '/' + totalCtn + ' Carton)' + (selectedCo ? ' — ' + selectedCo : '');
                     document.getElementById('hdStatSchools').innerText = totalSch;
                     document.getElementById('hdStatDelivered').innerText = doneSch;
-                    document.getElementById('hdStatCartons').innerText = totalCtn;
+                    document.getElementById('hdStatCartons').innerText = totalCtn.toLocaleString();
 
-                    // Per-dealer breakdown
+                    // Per-dealer breakdown (use full filtered data, not myData)
                     const byDealer = {};
                     data.forEach(s => {
                         const d = s.dealer || 'Unknown';
@@ -724,18 +758,25 @@ require_once 'includes/header.php';
                         const bCtn = r.totalCtn - r.doneCtn;
                         const bEx  = r.extraTotal - r.extraDone;
                         const bStr = calcFullMuatan(bCtn, bEx) || '0 ctn';
-                        const complete = bCtn === 0 && bEx === 0;
+                        const complete = p >= 100;
                         const pc = p >= 100 ? '#10b981' : p >= 60 ? '#f59e0b' : '#ef4444';
+                        const bgRow = complete ? 'background:#f0fdf4;' : '';
                         grandTotalCtn   += r.totalCtn;   grandDoneCtn  += r.doneCtn;
                         grandTotalExtra += r.extraTotal;  grandDoneExtra += r.extraDone;
-                        return '<tr>' +
-                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9;"><strong style="text-transform:uppercase;">' + d + '</strong></td>' +
-                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9;">' +
-                                '<span style="color:#2563eb;font-weight:700;">' + r.done + '/' + r.total + '</span>' +
-                                '<div style="background:#e2e8f0;border-radius:20px;height:8px;margin-top:5px;overflow:hidden;"><div style="background:linear-gradient(90deg,#10b981,#34d399);height:100%;border-radius:20px;width:' + p + '%;"></div></div>' +
+                        return '<tr style="' + bgRow + '">' +
+                            '<td style="padding:12px 18px;border-bottom:1px solid #f1f5f9;">' +
+                                '<span style="display:inline-block;background:#1e3a5f;color:#7dd3fc;font-family:monospace;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:6px;">' + d.toUpperCase() + '</span>' +
                             '</td>' +
-                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9; color:' + pc + '; font-weight:800;">' + p + '%</td>' +
-                            '<td style="padding:12px 16px; border-bottom:1px solid #f1f5f9; color:' + (complete?'#10b981':'#ef4444') + '; font-weight:700;">(' + bStr + ')</td>' +
+                            '<td style="padding:12px 18px;border-bottom:1px solid #f1f5f9;">' +
+                                '<span style="color:#0f172a;font-weight:700;">' + r.done + '/' + r.total + '</span> <span style="color:#94a3b8;font-size:0.78rem;">sekolah</span>' +
+                                '<div style="background:#e2e8f0;border-radius:20px;height:7px;margin-top:6px;overflow:hidden;"><div style="background:linear-gradient(90deg,#10b981,#34d399);height:100%;border-radius:20px;width:' + p + '%;transition:width 0.6s;"></div></div>' +
+                            '</td>' +
+                            '<td style="padding:12px 18px;border-bottom:1px solid #f1f5f9;">' +
+                                '<span style="display:inline-block;background:' + (complete?'#dcfce7':p>=60?'#fef9c3':'#fef2f2') + ';color:' + pc + ';font-weight:800;font-size:0.85rem;padding:3px 12px;border-radius:20px;">' + p + '%</span>' +
+                            '</td>' +
+                            '<td style="padding:12px 18px;border-bottom:1px solid #f1f5f9;color:' + (complete?'#10b981':'#ef4444') + ';font-weight:700;font-size:0.82rem;">' +
+                                (complete ? '<i class="bi bi-check-circle-fill me-1"></i>Lengkap' : '(' + bStr + ')') +
+                            '</td>' +
                         '</tr>';
                     }).join('');
 
