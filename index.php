@@ -1,5 +1,11 @@
 <?php
 // index.php - THE MASTER HUB (PREMIUM EDITION)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$username = $_SESSION['username'] ?? '';
+$role = $_SESSION['role'] ?? '';
+
 require_once 'config/db.php';
 
 try {
@@ -676,7 +682,7 @@ require_once 'includes/header.php';
             <div class="section-title" data-lang="sec_pss_shortcuts">Navigasi PSS</div>
         </div>
 
-        <div class="col-lg-4 col-md-6 col-sm-12">
+        <div class="col-lg-6 col-md-6 col-sm-12">
             <a href="master_hubpss.php" class="nav-card border-start border-info border-4 h-100" style="background: #f0f9ff; transition: all 0.25s ease;">
                 <div class="icon-box bg-info text-white"><i class="bi bi-cpu-fill fs-4"></i></div>
                 <div class="content">
@@ -686,22 +692,12 @@ require_once 'includes/header.php';
             </a>
         </div>
 
-        <div class="col-lg-4 col-md-6 col-sm-12">
+        <div class="col-lg-6 col-md-6 col-sm-12">
             <a href="pss_delivery.php" class="nav-card border-start border-success border-4 h-100" style="background: #f0fdf4; transition: all 0.25s ease;">
                 <div class="icon-box bg-success text-white"><i class="bi bi-mortarboard-fill fs-4"></i></div>
                 <div class="content">
                     <span class="title" data-lang="card_pss_delivery" style="font-weight:750; font-size:1.05rem; color:#15803d;">School Delivery (PSS)</span>
                     <span class="desc" data-lang="card_pss_delivery_d">Proses dokumen DO bagi projek Susu Sekolah.</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-lg-4 col-md-6 col-sm-12">
-            <a href="import_master.php" class="nav-card border-start border-warning border-4 h-100" style="background: #fffbeb; transition: all 0.25s ease;">
-                <div class="icon-box bg-warning text-dark"><i class="bi bi-file-earmark-spreadsheet fs-4"></i></div>
-                <div class="content">
-                    <span class="title" data-lang="import_master_title" style="font-weight:750; font-size:1.05rem; color:#b45309;">Import Master PSS</span>
-                    <span class="desc" data-lang="import_master_desc">Kemas kini data sekolah &amp; kontrak master.</span>
                 </div>
             </a>
         </div>

@@ -150,7 +150,6 @@ $is_staff = ($role === 'admin' || $role === 'staff');
                 <?php else: ?>
                 <li class="nav-item"><a class="nav-link" href="master_hubpss.php"><i class="bi bi-cpu-fill me-1 text-info"></i><span data-lang="card_pss_hub">PSS Master Hub</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="pss_delivery.php"><i class="bi bi-mortarboard-fill me-1 text-success"></i><span data-lang="card_pss_delivery">School Delivery (PSS)</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="import_master.php"><i class="bi bi-file-earmark-spreadsheet me-1 text-warning"></i><span data-lang="import_master_title">Import Master PSS</span></a></li>
                 <?php endif; ?>
             </ul>
 
