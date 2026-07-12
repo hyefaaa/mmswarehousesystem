@@ -732,6 +732,7 @@ require_once 'includes/header.php';
                                     <td class="text-center">
                                         <input type="checkbox" class="form-check-input" ${s.isDocSigned ? 'checked' : ''} 
                                                onchange="updateRec('${s.id}', 'isDocSigned', this.checked)">
+                                        ${s.isDocSigned && s.doc_signed_date ? `<br><small class="text-success d-block fw-bold mt-1" style="font-size: 0.72rem; line-height: 1.1;"><i class="bi bi-clock me-1"></i>${formatDateTime(s.doc_signed_date)}</small>` : ''}
                                     </td>
                                     <td class="text-end">
                                         <input type="date" class="form-control form-control-sm d-inline-block text-center" 
@@ -886,6 +887,20 @@ require_once 'includes/header.php';
                 s.delivery_date = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
             } else {
                 s.delivery_date = null;
+            }
+        }
+        if (field === 'isDocSigned') {
+            if (value) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                s.doc_signed_date = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            } else {
+                s.doc_signed_date = null;
             }
         }
 

@@ -57,11 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action == 'save_schools' || $acti
     $data = json_decode(file_get_contents('php://input'), true);
     if (!empty($data)) {
         foreach ($data as $s) {
-            $stmt = $pdo->prepare("INSERT INTO mms_logistik (id, name, district, dealer, co_no, plan_date, delivery_date, totalCartons, extraPacks, isDelivered, isDocSigned) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+            $stmt = $pdo->prepare("INSERT INTO mms_logistik (id, name, district, dealer, co_no, plan_date, delivery_date, doc_signed_date, totalCartons, extraPacks, isDelivered, isDocSigned) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
                 ON DUPLICATE KEY UPDATE 
                 plan_date=VALUES(plan_date), 
                 delivery_date=VALUES(delivery_date), 
+                doc_signed_date=VALUES(doc_signed_date), 
                 totalCartons=VALUES(totalCartons),
                 extraPacks=VALUES(extraPacks),
                 isDelivered=VALUES(isDelivered), 
@@ -70,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action == 'save_schools' || $acti
                 $s['id'], $s['name'], $s['district'], $s['dealer'], $s['co_no'], 
                 $s['plan_date'] ?: null, 
                 !empty($s['delivery_date']) ? $s['delivery_date'] : null, 
+                !empty($s['doc_signed_date']) ? $s['doc_signed_date'] : null, 
                 $s['totalCartons'], $s['extraPacks'], 
                 $s['isDelivered'] ? 1 : 0, 
                 $s['isDocSigned'] ? 1 : 0
