@@ -16,29 +16,21 @@ $full_name = $_SESSION['full_name'] ?? 'Pengguna';
 // Switch DB context to read initial stats
 try {
     $pdo->exec("USE susumura_mms_logistik");
-    
-    if ($role === 'dealer') {
-        $total_schools   = $pdo->prepare("SELECT COUNT(*) FROM mms_logistik WHERE dealer = ?");
-        $total_schools->execute([$username]);
-        $total_schools   = $total_schools->fetchColumn() ?: 0;
 
-        $total_delivered = $pdo->prepare("SELECT COUNT(*) FROM mms_logistik WHERE dealer = ? AND isDelivered = 1");
-        $total_delivered->execute([$username]);
-        $total_delivered = $total_delivered->fetchColumn() ?: 0;
+    // Fetch distinct CO list for the filter dropdown (latest first)
+    $co_list = $pdo->query("SELECT DISTINCT co_no FROM mms_logistik ORDER BY co_no DESC")->fetchAll(PDO::FETCH_COLUMN);
+    $latest_co = !empty($co_list) ? $co_list[0] : '';
 
-        $total_cartons   = $pdo->prepare("SELECT SUM(totalCartons) FROM mms_logistik WHERE dealer = ?");
-        $total_cartons->execute([$username]);
-        $total_cartons   = $total_cartons->fetchColumn() ?: 0;
-    } else {
-        $total_schools   = $pdo->query("SELECT COUNT(*) FROM mms_logistik")->fetchColumn() ?: 0;
-        $total_delivered = $pdo->query("SELECT COUNT(*) FROM mms_logistik WHERE isDelivered = 1")->fetchColumn() ?: 0;
-        $total_cartons   = $pdo->query("SELECT SUM(totalCartons) FROM mms_logistik")->fetchColumn() ?: 0;
-    }
-
-    $progress_percent = ($total_schools > 0) ? round(($total_delivered / $total_schools) * 100) : 0;
+    // Stats will be calculated client-side after CO filter is applied
+    $total_schools   = 0;
+    $total_delivered = 0;
+    $total_cartons   = 0;
+    $progress_percent = 0;
 } catch (PDOException $e) {
     $total_schools = $total_delivered = $total_cartons = 0;
     $progress_percent = 0;
+    $co_list = [];
+    $latest_co = '';
 }
 
 $page_title = 'School Delivery PSS | MMS';
@@ -211,19 +203,39 @@ require_once 'includes/header.php';
         <div class="progress-text" id="overallText">Loading progress...</div>
     </div>
 
+    <!-- CO / Cycle Filter (before stats so user picks CO first) -->
+    <div class="card border-0 shadow-sm p-3 mb-3" style="border-radius:14px; background:#f8fafc;">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1"><i class="bi bi-funnel me-1"></i>Tapis Mengikut Kitaran (CO)</label>
+                <select id="coFilterSelect" class="form-select" onchange="processAndRender()">
+                    <option value="">&mdash; Semua Kitaran &mdash;</option>
+                    <?php foreach ($co_list as $co): ?>
+                    <option value="<?= htmlspecialchars($co) ?>" <?= ($co === $latest_co) ? 'selected' : '' ?>>
+                        Kitaran <?= htmlspecialchars($co) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <p class="text-muted small mb-0 mt-2"><i class="bi bi-info-circle me-1 text-primary"></i>Pilih kitaran untuk melihat senarai penghantaran. Default: Kitaran terkini <strong>(<?= htmlspecialchars($latest_co) ?>)</strong>.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Stats grid -->
     <div class="stock-grid">
         <div class="stock-card" style="border-left-color: var(--mms-cyan);">
             <small class="stat-label">Jumlah Sekolah</small><br>
-            <b class="stat-value" id="statsSchools"><?= number_format($total_schools) ?></b>
+            <b class="stat-value" id="statsSchools">0</b>
         </div>
         <div class="stock-card" style="border-left-color: var(--mms-success);">
             <small class="stat-label">Selesai Dihantar</small><br>
-            <b class="stat-value text-success" id="statsDelivered"><?= number_format($total_delivered) ?></b>
+            <b class="stat-value text-success" id="statsDelivered">0</b>
         </div>
         <div class="stock-card" style="border-left-color: var(--mms-warning);">
             <small class="stat-label">Jumlah Karton</small><br>
-            <b class="stat-value text-warning" id="statsCartons"><?= number_format($total_cartons) ?></b>
+            <b class="stat-value text-warning" id="statsCartons">0</b>
         </div>
     </div>
 
@@ -293,6 +305,12 @@ require_once 'includes/header.php';
         let fD = schoolsData;
         if (currentRole !== 'admin' && currentRole !== 'staff') {
             fD = fD.filter(x => x.dealer === currentDealer);
+        }
+
+        // Apply CO filter
+        const coFilter = document.getElementById('coFilterSelect')?.value || '';
+        if (coFilter) {
+            fD = fD.filter(x => x.co_no === coFilter);
         }
 
         // Update real-time progress calculations
