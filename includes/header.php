@@ -166,10 +166,17 @@ $is_staff = function_exists('is_staff_role') ? is_staff_role($role) : ($role ===
 // Get allowed view modules
 $allowed_view_modules = [];
 if (isset($_SESSION['user_id']) && isset($pdo)) {
-    $stmtView = $pdo->prepare("SELECT allowed_view_modules FROM users WHERE id = ? LIMIT 1");
-    $stmtView->execute([$_SESSION['user_id']]);
-    $allowed_view_str = $stmtView->fetchColumn();
-    $allowed_view_modules = array_filter(array_map('trim', explode(',', $allowed_view_str)));
+    try {
+        $stmtView = $pdo->prepare("SELECT allowed_view_modules FROM users WHERE id = ? LIMIT 1");
+        $stmtView->execute([$_SESSION['user_id']]);
+        $allowed_view_str = $stmtView->fetchColumn();
+        if ($allowed_view_str) {
+            $allowed_view_modules = array_filter(array_map('trim', explode(',', $allowed_view_str)));
+        }
+    } catch (Exception $e) {
+        // Silently ignore if column doesn't exist yet (migration pending)
+        $allowed_view_modules = [];
+    }
 }
 ?>
 <nav class="navbar navbar-expand-lg mms-navbar sticky-top">
