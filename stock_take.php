@@ -36,7 +36,7 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <a href="reports.php" class="btn btn-outline-light"><i class="bi bi-graph-up me-1"></i> Reports</a>
+
                 <button class="btn btn-success fw-bold px-4" onclick="submitStockTake()"><i class="bi bi-cloud-check-fill me-1"></i> Save Adjustments</button>
             </div>
         </div>

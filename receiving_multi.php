@@ -207,7 +207,7 @@ require_once 'includes/header.php';
                 </td>
                 <td data-label="Expiry"><input type="text" name="items[${id}][expiry]" id="expiry_${id}" class="form-control form-control-sm datepicker bg-white"></td>
                 <td data-label="Batch"><input type="text" name="items[${id}][batch]" id="batch_${id}" class="form-control form-control-sm text-center px-1" placeholder="B1"></td>
-                <td data-label="Qty (Pcs)"><input type="number" name="items[${id}][qty_pcs]" id="qty_pcs_${id}" class="form-control form-control-sm text-center bg-light px-1" readonly></td>
+                <td data-label="Qty (Pcs)"><input type="number" name="items[${id}][qty_pcs]" id="qty_pcs_${id}" class="form-control form-control-sm text-center px-1" oninput="calculateCtn(${id})"></td>
                 <td data-label="Qty (Ctn)"><input type="number" name="items[${id}][qty]" id="qty_${id}" class="form-control form-control-sm text-center fw-bold border-primary px-1" required></td>
                 <td data-label="Pallet">
                     <select name="items[${id}][p_type]" class="form-select form-select-sm p-type-sel" onchange="updateHeaderTally()">

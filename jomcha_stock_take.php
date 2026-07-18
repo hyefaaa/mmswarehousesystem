@@ -479,24 +479,28 @@ require_once 'includes/header.php';
                 <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center gap-3 py-3 mb-4">
                     <i class="bi bi-exclamation-octagon-fill fs-3 text-danger"></i>
                     <div>
-                        <strong class="d-block text-danger">Tiada Rekod Pengauditan Stok Temui!</strong>
-                        <span class="small text-muted">Sila hantar laporan kiraan stok pertama anda hari ini untuk menstabilkan data inventori outlet.</span>
+                        <strong class="d-block text-danger" data-lang="jomcha_st_alert1_title">Tiada Rekod Pengauditan Stok Temui!</strong>
+                        <span class="small text-muted" data-lang="jomcha_st_alert1_desc">Sila hantar laporan kiraan stok pertama anda hari ini untuk menstabilkan data inventori outlet.</span>
                     </div>
                 </div>
             <?php elseif ($days_since_last_take > 7): ?>
                 <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-3 py-3 mb-4">
                     <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
                     <div>
-                        <strong class="d-block text-warning-emphasis">Kiraan Stok Tertunggak (Overdue)!</strong>
-                        <span class="small text-muted">Kiraan terakhir dilakukan pada <?= $last_take_date_fmt ?> (<?= $days_since_last_take ?> hari yang lalu). Audit stok fizikal perlu dilakukan seminggu sekali.</span>
+                        <strong class="d-block text-warning-emphasis" data-lang="jomcha_st_alert2_title">Kiraan Stok Tertunggak (Overdue)!</strong>
+                        <span class="small text-muted">
+                            <span data-lang="jomcha_st_alert2_desc1">Kiraan terakhir dilakukan pada</span> <?= $last_take_date_fmt ?> (<?= $days_since_last_take ?> <span data-lang="jomcha_st_alert2_desc2">hari yang lalu). Audit stok fizikal perlu dilakukan seminggu sekali.</span>
+                        </span>
                     </div>
                 </div>
             <?php else: ?>
                 <div class="alert alert-success border-0 shadow-sm d-flex align-items-center gap-3 py-3 mb-4">
                     <i class="bi bi-check-circle-fill fs-3 text-success"></i>
                     <div>
-                        <strong class="d-block text-success">Status Pematuhan Tally (OK)</strong>
-                        <span class="small text-muted">Kiraan stok terakhir disahkan pada <?= $last_take_date_fmt ?> (<?= $days_since_last_take ?> hari yang lalu).</span>
+                        <strong class="d-block text-success" data-lang="jomcha_st_alert3_title">Status Pematuhan Tally (OK)</strong>
+                        <span class="small text-muted">
+                            <span data-lang="jomcha_st_alert3_desc1">Kiraan stok terakhir disahkan pada</span> <?= $last_take_date_fmt ?> (<?= $days_since_last_take ?> <span data-lang="jomcha_st_alert3_desc2">hari yang lalu).</span>
+                        </span>
                     </div>
                 </div>
             <?php endif; ?>

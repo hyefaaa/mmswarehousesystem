@@ -304,7 +304,7 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex gap-2 no-print">
                 <a href="index.php" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
-                <a href="reports.php" class="btn btn-outline-light btn-sm"><i class="bi bi-graph-up-arrow me-1"></i> <span data-lang="nav_wh_monitor">Monitor</span></a>
+
                 <button onclick="window.print()" class="btn btn-sm fw-bold" style="background:#06b6d4; color:white;">
                     <i class="bi bi-printer me-1"></i> <span data-lang="inv_btn_print">Print</span>
                 </button>

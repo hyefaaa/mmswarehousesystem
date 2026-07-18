@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     if (!$has_valid_items) {
+        $error_lang = "jomcha_msg_err_empty";
         $error_msg = "Sila isi sekurang-kurangnya satu produk dengan kuantiti yang sah.";
     } else {
         try {
@@ -222,10 +223,10 @@ require_once 'includes/header.php';
 
 <div class="container-fluid px-4 pb-5">
     <?php if ($success_msg): ?>
-        <div class="alert alert-success border-0 shadow-sm mb-4"><i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($success_msg) ?></div>
+        <div class="alert alert-success border-0 shadow-sm mb-4"><i class="bi bi-check-circle-fill me-2"></i><span data-lang="<?= isset($success_lang) ? $success_lang : 'jomcha_msg_success' ?>"><?= htmlspecialchars($success_msg) ?></span></div>
     <?php endif; ?>
     <?php if ($error_msg): ?>
-        <div class="alert alert-danger border-0 shadow-sm mb-4"><i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($error_msg) ?></div>
+        <div class="alert alert-danger border-0 shadow-sm mb-4"><i class="bi bi-exclamation-triangle-fill me-2"></i><span <?= isset($error_lang) && $error_lang ? 'data-lang="'.$error_lang.'"' : '' ?>><?= htmlspecialchars($error_msg) ?></span></div>
     <?php endif; ?>
 
     <div class="row g-4">

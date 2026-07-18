@@ -179,7 +179,7 @@ if (!function_exists('check_view_permission')) {
             'login.php', 
             'logout.php', 
             'profile.php', 
-            'reports.php', 
+ 
             'get_batches.php', 
             'get_outbound_details.php',
             'pallet_management.php',

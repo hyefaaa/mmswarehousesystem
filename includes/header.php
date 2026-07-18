@@ -267,7 +267,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <i class="bi bi-graph-up-arrow me-1"></i><span data-lang="nav_reports">Reports</span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="reports.php"><i class="bi bi-search me-1"></i><span data-lang="nav_wh_monitor">Warehouse Monitor</span></a></li>
+
                         <li><a class="dropdown-item" href="inventory_report.php"><i class="bi bi-clipboard2-data me-1"></i><span data-lang="nav_inv_report">Inventory Report</span></a></li>
                         <li><a class="dropdown-item" href="pallet_management.php"><i class="bi bi-grid-3x3-gap me-1"></i><span data-lang="nav_pallet_monitor">Pallet Monitor</span></a></li>
                     </ul>

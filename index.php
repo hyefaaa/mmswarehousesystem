@@ -804,13 +804,7 @@ require_once 'includes/header.php';
                     <span class="desc" data-lang="card_spoilage_list_d">Senarai tuntutan kerosakan & status tuntutan.</span>
                 </div>
             </a>
-            <a href="reports.php" class="nav-card">
-                <div class="icon-box bg-primary text-white"><i class="bi bi-graph-up-arrow"></i></div>
-                <div class="content">
-                    <span class="title" data-lang="card_wh_monitor">Warehouse Monitor</span>
-                    <span class="desc" data-lang="card_wh_monitor_d">Carta alir gudang & status bebanan pallet.</span>
-                </div>
-            </a>
+
             <a href="product_management.php" class="nav-card">
                 <div class="icon-box bg-primary-subtle text-primary"><i class="bi bi-database-fill-gear"></i></div>
                 <div class="content">

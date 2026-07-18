@@ -1,6 +1,6 @@
 <?php
 // view_batch.php - MMS UPGRADED INTERFACE (DARK BLUE THEME)
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 $configFile = __DIR__ . '/config/db.php';

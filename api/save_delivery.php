@@ -3,13 +3,50 @@
 // Skrip pemprosesan penghantaran PSS sekolah (Penyediaan DO)
 // Ditulis dengan kawalan transaksi PDO dan keselamatan pemotongan stok
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 if (!file_exists('../config/db.php')) {
     die("❌ Configuration File Not Found.");
 }
 require_once '../config/db.php';
+
+// Auto-migration for Pallet Management Tables
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pallet_types` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(100) NOT NULL,
+      `code` varchar(50) NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `name` (`name`),
+      UNIQUE KEY `code` (`code`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    $count = $pdo->query("SELECT COUNT(*) FROM pallet_types")->fetchColumn();
+    if ($count == 0) {
+        $pdo->exec("INSERT INTO `pallet_types` (`id`, `name`, `code`) VALUES
+            (1, 'Plain Wood', 'plain'),
+            (2, 'Loscam Red', 'red'),
+            (3, 'LHP Green', 'lhp'),
+            (4, 'FFM Orange', 'orange'),
+            (5, 'FFM Green', 'ffm'),
+            (6, 'Plastic Black', 'black')");
+    }
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pallet_ledger` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `transaction_date` datetime DEFAULT current_timestamp(),
+      `transaction_type` enum('IN','OUT','ADJUSTMENT') NOT NULL,
+      `pallet_code` varchar(50) NOT NULL,
+      `qty` int(11) NOT NULL,
+      `reference_no` varchar(100) DEFAULT NULL,
+      `notes` text DEFAULT NULL,
+      PRIMARY KEY (`id`),
+      KEY `pallet_code` (`pallet_code`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+} catch (Exception $e) {
+    error_log("Migration error: " . $e->getMessage());
+}
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

@@ -274,7 +274,7 @@ require_once 'includes/header.php';
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <label class="form-label fw-bold" data-lang="recv_lbl_qty_pcs">Quantity (Pieces)</label>
-                    <input type="number" id="qty_pcs" class="form-control readonly-input text-center" readonly>
+                    <input type="number" id="qty_pcs" class="form-control text-center" oninput="calculateCtn()">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-bold text-primary" data-lang="recv_lbl_qty_ctns">Quantity (Cartons) *</label>
@@ -524,6 +524,32 @@ require_once 'includes/header.php';
             })
             .catch(err => console.error('Error parsing QR:', err));
         }, 300);
+    }
+
+    function calculateCtn() {
+        const qtyPcsInput = document.getElementById('qty_pcs');
+        const qtyCtnInput = document.getElementById('qty');
+        const sel = document.getElementById('product_id');
+        
+        if (qtyPcsInput && qtyCtnInput && sel && sel.value) {
+            let pcs = parseInt(qtyPcsInput.value);
+            if (!isNaN(pcs) && pcs > 0) {
+                const opt = sel.options[sel.selectedIndex];
+                let packSize = parseInt($(opt).data('packsize') || 0);
+                if (packSize > 0) {
+                    qtyCtnInput.value = Math.floor(pcs / packSize);
+                } else {
+                    const optText = opt.text;
+                    const match = optText.match(/(\d+)\s*(PK|PCS|PC)\/CTN/i);
+                    if (match) {
+                        let pSize = parseInt(match[1]);
+                        if (pSize > 0) {
+                            qtyCtnInput.value = Math.floor(pcs / pSize);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     function openCamera() {

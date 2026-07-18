@@ -422,6 +422,8 @@ const MMS_TRANSLATIONS = {
         jomcha_status_low:        'Low Stock!',
         jomcha_btn_reject:        'Reject Request',
         jomcha_btn_approve:       'Approve & Deduct Warehouse Stock',
+        jomcha_msg_success:       'Jomcha stock requisition successfully sent to warehouse for approval!',
+        jomcha_msg_err_empty:     'Please fill in at least one product with a valid quantity.',
         
         // ===== JOMCHA DASHBOARD =====
         jomcha_dash_title:        'JOMCHA OUTLET HUB',
@@ -508,6 +510,14 @@ const MMS_TRANSLATIONS = {
         jomcha_st_exp_table_title:'Jomcha Stock Expiry Monitoring',
         jomcha_st_sales_table_title:'Jomcha Outlet Sales Performance (Auto-Billed)',
         jomcha_st_audit_table_title:'Jomcha Outlet Stock Take Audit Logs (Last 50)',
+        jomcha_st_alert1_title: 'No Stock Audit Records Found!',
+        jomcha_st_alert1_desc: 'Please submit your first stock count report today to stabilize outlet inventory data.',
+        jomcha_st_alert2_title: 'Stock Count Overdue!',
+        jomcha_st_alert2_desc1: 'Last count was performed on',
+        jomcha_st_alert2_desc2: 'days ago). Physical stock audit must be performed once a week.',
+        jomcha_st_alert3_title: 'Tally Compliance Status (OK)',
+        jomcha_st_alert3_desc1: 'Last stock count confirmed on',
+        jomcha_st_alert3_desc2: 'days ago).',
 
         // ===== JOMCHA STOCK TAKE ADDITIONS =====
         jomcha_st_filter_cat_all: 'All Categories',
@@ -961,6 +971,8 @@ const MMS_TRANSLATIONS = {
         jomcha_status_low:        'Stok Kurang!',
         jomcha_btn_reject:        'Tolak Permohonan',
         jomcha_btn_approve:       'Lulus & Potong Stok Gudang',
+        jomcha_msg_success:       'Permohonan stok Jomcha berjaya dihantar ke gudang untuk pengesahan!',
+        jomcha_msg_err_empty:     'Sila isi sekurang-kurangnya satu produk dengan kuantiti yang sah.',
 
         // ===== JOMCHA DASHBOARD =====
         jomcha_dash_title:        'JOMCHA OUTLET HUB',
@@ -1047,6 +1059,14 @@ const MMS_TRANSLATIONS = {
         jomcha_st_exp_table_title:'Pemantauan Tarikh Luput Stok Jomcha',
         jomcha_st_sales_table_title:'Laporan Prestasi Jualan Outlet Jomcha (Auto-Billed)',
         jomcha_st_audit_table_title:'Log Audit Kiraan Stok Outlet Jomcha (50 Terakhir)',
+        jomcha_st_alert1_title: 'Tiada Rekod Pengauditan Stok Temui!',
+        jomcha_st_alert1_desc: 'Sila hantar laporan kiraan stok pertama anda hari ini untuk menstabilkan data inventori outlet.',
+        jomcha_st_alert2_title: 'Kiraan Stok Tertunggak (Overdue)!',
+        jomcha_st_alert2_desc1: 'Kiraan terakhir dilakukan pada',
+        jomcha_st_alert2_desc2: 'hari yang lalu). Audit stok fizikal perlu dilakukan seminggu sekali.',
+        jomcha_st_alert3_title: 'Status Pematuhan Tally (OK)',
+        jomcha_st_alert3_desc1: 'Kiraan stok terakhir disahkan pada',
+        jomcha_st_alert3_desc2: 'hari yang lalu).',
 
         // ===== JOMCHA STOCK TAKE ADDITIONS =====
         jomcha_st_filter_cat_all: 'Semua Kategori',

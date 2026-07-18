@@ -11,6 +11,47 @@ if (!file_exists('../config/db.php')) {
 }
 require_once '../config/db.php';
 
+// Auto-migration for Pallet Management Tables & Columns
+try {
+    // 1. Create pallet_types if not exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pallet_types` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(100) NOT NULL,
+      `code` varchar(50) NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `name` (`name`),
+      UNIQUE KEY `code` (`code`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // Seed default pallet types if empty
+    $count = $pdo->query("SELECT COUNT(*) FROM pallet_types")->fetchColumn();
+    if ($count == 0) {
+        $pdo->exec("INSERT INTO `pallet_types` (`id`, `name`, `code`) VALUES
+            (1, 'Plain Wood', 'plain'),
+            (2, 'Loscam Red', 'red'),
+            (3, 'LHP Green', 'lhp'),
+            (4, 'FFM Orange', 'orange'),
+            (5, 'FFM Green', 'ffm'),
+            (6, 'Plastic Black', 'black')");
+    }
+
+    // 2. Create pallet_ledger if not exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pallet_ledger` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `transaction_date` datetime DEFAULT current_timestamp(),
+      `transaction_type` enum('IN','OUT','ADJUSTMENT') NOT NULL,
+      `pallet_code` varchar(50) NOT NULL,
+      `qty` int(11) NOT NULL,
+      `reference_no` varchar(100) DEFAULT NULL,
+      `notes` text DEFAULT NULL,
+      PRIMARY KEY (`id`),
+      KEY `pallet_code` (`pallet_code`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+} catch (Exception $e) {
+    // Silently ignore or log error
+    error_log("Migration error: " . $e->getMessage());
+}
+
 function convertDate($dateStr) {
     if (empty($dateStr)) return null;
     if (strpos($dateStr, '-') !== false) return $dateStr;
