@@ -2,27 +2,84 @@
 // pallet_management.php
 require_once 'config/db.php';
 
+// Auto-migration for Pallet Management Tables & Columns
+try {
+    // 1. Create pallet_types if not exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pallet_types` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(100) NOT NULL,
+      `code` varchar(50) NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `name` (`name`),
+      UNIQUE KEY `code` (`code`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // Seed default pallet types if empty
+    $count = $pdo->query("SELECT COUNT(*) FROM pallet_types")->fetchColumn();
+    if ($count == 0) {
+        $pdo->exec("INSERT INTO `pallet_types` (`id`, `name`, `code`) VALUES
+            (1, 'Plain Wood', 'plain'),
+            (2, 'Loscam Red', 'red'),
+            (3, 'LHP Green', 'lhp'),
+            (4, 'FFM Orange', 'orange'),
+            (5, 'FFM Green', 'ffm'),
+            (6, 'Plastic Black', 'black')");
+    }
+
+    // 2. Create pallet_ledger if not exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pallet_ledger` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `transaction_date` datetime DEFAULT current_timestamp(),
+      `transaction_type` enum('IN','OUT','ADJUSTMENT') NOT NULL,
+      `pallet_code` varchar(50) NOT NULL,
+      `qty` int(11) NOT NULL,
+      `reference_no` varchar(100) DEFAULT NULL,
+      `notes` text DEFAULT NULL,
+      PRIMARY KEY (`id`),
+      KEY `pallet_code` (`pallet_code`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // 3. Check and add columns to inventory_batches
+    $check_column = $pdo->query("SHOW COLUMNS FROM inventory_batches LIKE 'pallet_type'")->fetch();
+    if (!$check_column) {
+        $pdo->exec("ALTER TABLE inventory_batches ADD COLUMN pallet_type VARCHAR(100) NULL AFTER qty_on_hand");
+    }
+
+    $check_column2 = $pdo->query("SHOW COLUMNS FROM inventory_batches LIKE 'pallet_id_tag'")->fetch();
+    if (!$check_column2) {
+        $pdo->exec("ALTER TABLE inventory_batches ADD COLUMN pallet_id_tag VARCHAR(50) NULL AFTER pallet_type");
+    }
+} catch (Exception $e) {
+    error_log("Pallet migration failed: " . $e->getMessage());
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 // Role restriction: Admin and Staff only
 $role = $_SESSION['role'] ?? '';
-$is_staff = ($role === 'admin' || $role === 'staff');
+$is_staff = is_staff_role($role);
 if (!$is_staff) {
     http_response_code(403);
-    echo '<div style="font-family: sans-serif; text-align: center; padding: 100px 20px;">
-            <h1 style="color: #e74c3c;">🚫 Access Denied!</h1>
-            <p>You do not have permission to access the Pallet Management portal.</p>
-            <a href="index.php" style="color: #3498db; font-weight: bold; text-decoration: none;">Back to Dashboard</a>
+    $page_title = 'Access Denied';
+    require_once 'includes/header.php';
+    echo '<div class="container-fluid px-4 py-5 text-center">
+            <div class="card shadow-sm mx-auto p-5" style="max-width: 500px; border-radius: 16px;">
+                <h1 style="color: #e74c3c;" class="display-4"><i class="bi bi-shield-slash-fill"></i></h1>
+                <h3 class="fw-bold mt-3">Akses Dihalang!</h3>
+                <p class="text-muted">Akaun anda tiada kebenaran untuk mengakses portal Pengurusan Palet.</p>
+                <a href="index.php" class="btn btn-primary mt-3 py-2 px-4" style="background: #0f172a; border: none;">Kembali ke Dashboard</a>
+            </div>
           </div>';
+    require_once 'includes/footer.php';
     exit;
 }
 
 $message = "";
 
 // Handle Manual Adjustment
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'adjust') {
+if (isset($_SERVER["REQUEST_METHOD"]) && $_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'adjust') {
     $pallet_code = htmlspecialchars(strip_tags($_POST['pallet_code'] ?? ''));
     $adj_type    = $_POST['adj_type'] ?? 'add';
     $qty_val     = (int)($_POST['qty'] ?? 0);
@@ -81,54 +138,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 $pallet_types = [];
 try {
     $pallet_types = $pdo->query("SELECT * FROM pallet_types ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Gagal memuatkan jenis palet: ' . htmlspecialchars($e->getMessage()) . '</div>';
+}
 
 // Calculate KPI Metrics for each pallet type
 $pallet_summary = [];
-foreach ($pallet_types as $pt) {
-    $code = $pt['code'];
-    $name = $pt['name'];
+if (!empty($pallet_types)) {
+    try {
+        foreach ($pallet_types as $pt) {
+            $code = $pt['code'];
+            $name = $pt['name'];
 
-    // 1. Total IN
-    $stmtIn = $pdo->prepare("SELECT SUM(qty) as total FROM pallet_ledger WHERE pallet_code = ? AND transaction_type = 'IN'");
-    $stmtIn->execute([$code]);
-    $total_in = (int)($stmtIn->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+            // 1. Total IN
+            $stmtIn = $pdo->prepare("SELECT SUM(qty) as total FROM pallet_ledger WHERE pallet_code = ? AND transaction_type = 'IN'");
+            $stmtIn->execute([$code]);
+            $total_in = (int)($stmtIn->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-    // 2. Total OUT
-    $stmtOut = $pdo->prepare("SELECT SUM(qty) as total FROM pallet_ledger WHERE pallet_code = ? AND transaction_type = 'OUT'");
-    $stmtOut->execute([$code]);
-    $total_out = (int)($stmtOut->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+            // 2. Total OUT
+            $stmtOut = $pdo->prepare("SELECT SUM(qty) as total FROM pallet_ledger WHERE pallet_code = ? AND transaction_type = 'OUT'");
+            $stmtOut->execute([$code]);
+            $total_out = (int)($stmtOut->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-    // 3. Net Balance (Total physically in warehouse)
-    $stmtNet = $pdo->prepare("
-        SELECT SUM(CASE 
-            WHEN transaction_type = 'IN' THEN qty 
-            WHEN transaction_type = 'OUT' THEN -qty 
-            ELSE qty 
-        END) as net 
-        FROM pallet_ledger 
-        WHERE pallet_code = ?
-    ");
-    $stmtNet->execute([$code]);
-    $net_balance = (int)($stmtNet->fetch(PDO::FETCH_ASSOC)['net'] ?? 0);
+            // 3. Net Balance (Total physically in warehouse)
+            $stmtNet = $pdo->prepare("
+                SELECT SUM(CASE 
+                    WHEN transaction_type = 'IN' THEN qty 
+                    WHEN transaction_type = 'OUT' THEN -qty 
+                    ELSE qty 
+                END) as net 
+                FROM pallet_ledger 
+                WHERE pallet_code = ?
+            ");
+            $stmtNet->execute([$code]);
+            $net_balance = (int)($stmtNet->fetch(PDO::FETCH_ASSOC)['net'] ?? 0);
 
-    // 4. Loaded Pallets (Currently holds stock)
-    $stmtLoaded = $pdo->prepare("SELECT COUNT(*) as loaded FROM inventory_batches WHERE qty_on_hand > 0 AND pallet_type = ?");
-    $stmtLoaded->execute([$name]);
-    $loaded_pallets = (int)($stmtLoaded->fetch(PDO::FETCH_ASSOC)['loaded'] ?? 0);
+            // 4. Loaded Pallets (Currently holds stock)
+            $stmtLoaded = $pdo->prepare("SELECT COUNT(*) as loaded FROM inventory_batches WHERE qty_on_hand > 0 AND pallet_type = ?");
+            $stmtLoaded->execute([$name]);
+            $loaded_pallets = (int)($stmtLoaded->fetch(PDO::FETCH_ASSOC)['loaded'] ?? 0);
 
-    // 5. Empty Pallets (Net Balance - Loaded)
-    $empty_pallets = max(0, $net_balance - $loaded_pallets);
+            // 5. Empty Pallets (Net Balance - Loaded)
+            $empty_pallets = max(0, $net_balance - $loaded_pallets);
 
-    $pallet_summary[] = [
-        'code' => $code,
-        'name' => $name,
-        'in' => $total_in,
-        'out' => $total_out,
-        'net' => $net_balance,
-        'loaded' => $loaded_pallets,
-        'empty' => $empty_pallets
-    ];
+            $pallet_summary[] = [
+                'code' => $code,
+                'name' => $name,
+                'in' => $total_in,
+                'out' => $total_out,
+                'net' => $net_balance,
+                'loaded' => $loaded_pallets,
+                'empty' => $empty_pallets
+            ];
+        }
+    } catch (Exception $e) {
+        $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ralat pangkalan data (KPI): ' . htmlspecialchars($e->getMessage()) . '</div>';
+    }
 }
 
 // Fetch Full Movement History Ledger
@@ -140,22 +205,34 @@ try {
         LEFT JOIN pallet_types p ON l.pallet_code = p.code
         ORDER BY l.transaction_date DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    if (empty($message)) {
+        $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Gagal memuatkan rekod lejar: ' . htmlspecialchars($e->getMessage()) . '</div>';
+    }
+}
 
 $page_title = 'Pallet Management & Monitor';
 require_once 'includes/header.php';
 ?>
 
-<div class="container-fluid px-5 mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-800 mb-0" data-lang="nav_pallet_monitor"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i>Pallet Monitor & Management</h2>
-            <p class="text-muted mb-0 small text-uppercase" data-lang="pallet_subtitle">Real-time assets tracking, empty pallet stocks & movement logs</p>
+<div class="page-header mb-4">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
+            <div>
+                <h1 class="fw-800 mb-1"><i class="bi bi-grid-3x3-gap-fill me-2 text-warning"></i><span data-lang="nav_pallet_monitor">Pallet Monitor & Management</span></h1>
+                <p class="opacity-75 mb-0 fw-light" data-lang="pallet_subtitle">Real-time assets tracking, empty pallet stocks & movement logs</p>
+            </div>
+            <div class="d-flex gap-3 align-items-center">
+                <button class="btn btn-info text-white fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#adjustModal">
+                    <i class="bi bi-sliders me-1"></i> <span data-lang="btn_adjust_pallet">Manual Adjustment</span>
+                </button>
+                <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
+            </div>
         </div>
-        <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#adjustModal">
-            <i class="bi bi-sliders me-1"></i> <span data-lang="btn_adjust_pallet">Manual Adjustment</span>
-        </button>
     </div>
+</div>
+
+<div class="container-fluid px-4 pb-5">
 
     <?= $message ?>
 

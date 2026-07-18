@@ -27,7 +27,7 @@ require_once 'includes/header.php';
             
             <!-- Step 1: Upload CSV File -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-navy text-white py-3">
+                <div class="card-header bg-dark text-white py-3">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-cloud-upload me-2 text-warning"></i>1. Upload CSV File</h5>
                 </div>
                 <div class="card-body p-4">
@@ -43,7 +43,7 @@ require_once 'includes/header.php';
 
             <!-- Step 2: Select Daerah to Import -->
             <div class="card border-0 shadow-sm mb-4" id="districtSection" style="display:none;">
-                <div class="card-header bg-navy text-white py-3">
+                <div class="card-header bg-dark text-white py-3">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-geo-alt-fill me-2 text-warning"></i>2. Select Daerah to Import</h5>
                 </div>
                 <div class="card-body p-4">
@@ -66,7 +66,7 @@ require_once 'includes/header.php';
 
             <!-- Step 3: Contract & CO Details -->
             <div class="card border-0 shadow-sm mb-4" id="scenarioSection" style="display:none;">
-                <div class="card-header bg-navy text-white py-3">
+                <div class="card-header bg-dark text-white py-3">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2 text-warning"></i>3. Contract & CO Details</h5>
                 </div>
                 <div class="card-body p-4">

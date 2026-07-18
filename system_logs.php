@@ -13,11 +13,17 @@ if (session_status() === PHP_SESSION_NONE) {
 $role = $_SESSION['role'] ?? '';
 if ($role !== 'admin') {
     http_response_code(403);
-    echo '<div style="font-family: sans-serif; text-align: center; padding: 100px 20px;">
-            <h1 style="color: #e74c3c;">🚫 Akses Dihalang!</h1>
-            <p>Anda tidak mempunyai kebenaran untuk melihat halaman log audit sistem ini.</p>
-            <a href="index.php" style="color: #3498db; font-weight: bold; text-decoration: none;">Kembali ke Dashboard</a>
+    $page_title = 'Akses Dihalang';
+    require_once 'includes/header.php';
+    echo '<div class="container-fluid px-4 py-5 text-center">
+            <div class="card shadow-sm mx-auto p-5" style="max-width: 500px; border-radius: 16px;">
+                <h1 style="color: #e74c3c;" class="display-4"><i class="bi bi-shield-slash-fill"></i></h1>
+                <h3 class="fw-bold mt-3">Akses Dihalang!</h3>
+                <p class="text-muted">Anda tidak mempunyai kebenaran untuk melihat halaman log audit sistem ini.</p>
+                <a href="index.php" class="btn btn-primary mt-3 py-2 px-4" style="background: #0f172a; border: none;">Kembali ke Dashboard</a>
+            </div>
           </div>';
+    require_once 'includes/footer.php';
     exit;
 }
 
@@ -59,7 +65,7 @@ require_once 'includes/header.php';
     <div class="card main-card border-0 mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="fw-800 text-navy mb-0"><i class="bi bi-journal-text me-2"></i>Log Aktiviti Gudang</h5>
-            <span class="badge bg-navy px-3 py-2 rounded-pill"><?= count($logs) ?> Log Dikesan</span>
+            <span class="badge bg-secondary px-3 py-2 rounded-pill"><?= count($logs) ?> Log Dikesan</span>
         </div>
 
         <div class="table-responsive">

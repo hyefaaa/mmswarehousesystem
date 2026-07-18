@@ -20,8 +20,8 @@ try {
         if (empty($data) || empty(trim($data[0]))) continue;
         
         $totalLines++;
-        $name = trim($data[0]);
-        $category = trim($data[1]); // Supports Cooking, IceCream, Beef, etc.
+        $name = trim($data[0] ?? '');
+        $category = trim($data[1] ?? ''); // Supports Cooking, IceCream, Beef, etc.
         $uom = isset($data[2]) ? trim($data[2]) : 'Carton';
         $pack = (int)($data[3] ?? 1);
         $cap = (int)($data[4] ?? 60);

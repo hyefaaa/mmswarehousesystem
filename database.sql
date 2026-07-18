@@ -709,25 +709,124 @@ INSERT INTO `system_logs` VALUES (1,1,'admin','User Logged In','users_hub',1,'Pe
 UNLOCK TABLES;
 
 --
--- Table structure for table `test_load`
+-- Table structure for table `jomcha_requests`
 --
 
-DROP TABLE IF EXISTS `test_load`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `test_load` (
-  `line` text DEFAULT NULL
+DROP TABLE IF EXISTS `jomcha_requests`;
+CREATE TABLE `jomcha_requests` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `request_date` date NOT NULL,
+  `requested_by` varchar(100) NOT NULL,
+  `status` enum('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `processed_at` timestamp NULL DEFAULT NULL,
+  `processed_by` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `test_load`
+-- Table structure for table `jomcha_request_items`
 --
 
-LOCK TABLES `test_load` WRITE;
-/*!40000 ALTER TABLE `test_load` DISABLE KEYS */;
-/*!40000 ALTER TABLE `test_load` ENABLE KEYS */;
-UNLOCK TABLES;
+DROP TABLE IF EXISTS `jomcha_request_items`;
+CREATE TABLE `jomcha_request_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `request_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `qty_requested` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_jomcha_request` (`request_id`),
+  KEY `fk_jomcha_product` (`product_id`),
+  CONSTRAINT `fk_jomcha_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
+  CONSTRAINT `fk_jomcha_request` FOREIGN KEY (`request_id`) REFERENCES `jomcha_requests` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `jomcha_stock_takes`
+--
+
+DROP TABLE IF EXISTS `jomcha_stock_takes`;
+CREATE TABLE `jomcha_stock_takes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL,
+  `jcb_chiller_1_ctn` int(11) NOT NULL DEFAULT 0,
+  `jcb_chiller_1_pcs` int(11) NOT NULL DEFAULT 0,
+  `jcb_chiller_2_ctn` int(11) NOT NULL DEFAULT 0,
+  `jcb_chiller_2_pcs` int(11) NOT NULL DEFAULT 0,
+  `jcb_rack_ctn` int(11) NOT NULL DEFAULT 0,
+  `jcb_rack_pcs` int(11) NOT NULL DEFAULT 0,
+  `mms_rack_ctn` int(11) NOT NULL DEFAULT 0,
+  `mms_rack_pcs` int(11) NOT NULL DEFAULT 0,
+  `mms_chiller_1_ctn` int(11) NOT NULL DEFAULT 0,
+  `mms_chiller_1_pcs` int(11) NOT NULL DEFAULT 0,
+  `mms_chiller_2_ctn` int(11) NOT NULL DEFAULT 0,
+  `mms_chiller_2_pcs` int(11) NOT NULL DEFAULT 0,
+  `mms_freezer_meat_ctn` int(11) NOT NULL DEFAULT 0,
+  `mms_freezer_meat_pcs` int(11) NOT NULL DEFAULT 0,
+  `mms_freezer_ice_cream_ctn` int(11) NOT NULL DEFAULT 0,
+  `mms_freezer_ice_cream_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_rack_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_rack_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_pallet_1_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_pallet_1_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_pallet_2_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_pallet_2_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_chiller_1_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_chiller_1_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_chiller_2_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_chiller_2_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_freezer_1_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_freezer_1_pcs` int(11) NOT NULL DEFAULT 0,
+  `sa_freezer_2_ctn` int(11) NOT NULL DEFAULT 0,
+  `sa_freezer_2_pcs` int(11) NOT NULL DEFAULT 0,
+  `physical_qty` int(11) NOT NULL,
+  `theoretical_qty` int(11) NOT NULL,
+  `variance` int(11) NOT NULL,
+  `taken_by` varchar(100) NOT NULL,
+  `take_date` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `jomcha_stock_takes_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `jomcha_sales`
+--
+
+DROP TABLE IF EXISTS `jomcha_sales`;
+CREATE TABLE `jomcha_sales` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `sale_date` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `jomcha_sales_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `jomcha_damaged_stock`
+--
+
+DROP TABLE IF EXISTS `jomcha_damaged_stock`;
+CREATE TABLE `jomcha_damaged_stock` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `batch_no` varchar(100) DEFAULT NULL,
+  `image_data` longtext DEFAULT NULL,
+  `reported_by` varchar(100) NOT NULL,
+  `issue_type` varchar(100) NOT NULL,
+  `status` varchar(50) NOT NULL DEFAULT 'Dilaporkan',
+  `returned_by` varchar(100) DEFAULT NULL,
+  `return_date` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `jomcha_damaged_stock_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Table structure for table `users`

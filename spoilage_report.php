@@ -4,12 +4,16 @@
 require_once 'config/db.php';
 
 // Fetch reports with product and batch details
-$query = "SELECT sl.*, p.name as product_name, b.batch_no 
-          FROM spoilage_logs sl
-          JOIN inventory_batches b ON sl.batch_id = b.id
-          JOIN products p ON b.product_id = p.id
-          ORDER BY sl.reported_at DESC";
-$reports = $pdo->query($query)->fetchAll();
+try {
+    $query = "SELECT sl.*, p.name as product_name, b.batch_no 
+              FROM spoilage_logs sl
+              JOIN inventory_batches b ON sl.batch_id = b.id
+              JOIN products p ON b.product_id = p.id
+              ORDER BY sl.reported_at DESC";
+    $reports = $pdo->query($query)->fetchAll() ?: [];
+} catch (Exception $e) {
+    $reports = [];
+}
 
 
 $page_title = 'Spoilage & Supplier Claims';

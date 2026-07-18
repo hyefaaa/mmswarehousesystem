@@ -4,6 +4,119 @@
 
 require_once 'config/db.php';
 
+// Auto-migration for PSS Tables if they do not exist
+try {
+    // 1. Create hds
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `hds` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(100) DEFAULT NULL,
+      `short_code` varchar(10) DEFAULT NULL,
+      `contact_number` varchar(20) DEFAULT NULL,
+      `status` enum('Active','Inactive') DEFAULT 'Active',
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // Seed default hds if empty
+    $countHds = $pdo->query("SELECT COUNT(*) FROM hds")->fetchColumn();
+    if ($countHds == 0) {
+        $pdo->exec("INSERT INTO `hds` (`id`, `name`, `short_code`, `contact_number`, `status`) VALUES
+            (2,'MOHD HAFIZI TALIB','FIZI',NULL,'Active'),
+            (3,'WALI KHAN','WALI',NULL,'Active'),
+            (5,'NOIDORA ABDULLAH','DORA',NULL,'Active'),
+            (7,'AHMAD TARMIZI MOHAMED','MMS','01120621990','Active'),
+            (8,'SHARIFAH MUNIRAH','SYA',NULL,'Active'),
+            (9,'SITI NOOR IDAYU','AYU',NULL,'Active')");
+    }
+
+    // 2. Create schools
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `schools` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `school_code` varchar(20) NOT NULL,
+      `school_name` varchar(255) NOT NULL,
+      `zone_code` varchar(100) DEFAULT NULL,
+      `default_hd_id` int(11) DEFAULT NULL,
+      `student_count` int(11) DEFAULT 0,
+      `address` text DEFAULT NULL,
+      `no_tel` varchar(50) DEFAULT NULL,
+      `co_number` varchar(50) DEFAULT NULL,
+      `sap_no` varchar(50) DEFAULT NULL,
+      `tender_no` varchar(50) DEFAULT NULL,
+      `contract_no` varchar(50) DEFAULT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `idx_school_code` (`school_code`),
+      KEY `fk_school_hd` (`default_hd_id`),
+      CONSTRAINT `fk_school_hd` FOREIGN KEY (`default_hd_id`) REFERENCES `hds` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // 3. Create co_cycles if not exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `co_cycles` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(50) DEFAULT NULL,
+      `start_date` date DEFAULT NULL,
+      `end_date` date DEFAULT NULL,
+      `is_active` tinyint(4) DEFAULT 1,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // 4. Create deliveries_pss
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `deliveries_pss` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `do_number` varchar(20) DEFAULT NULL,
+      `delivery_date` date DEFAULT NULL,
+      `hd_id` int(11) DEFAULT NULL,
+      `vehicle_plate` varchar(20) DEFAULT NULL,
+      `school_id` int(11) DEFAULT NULL,
+      `co_cycle_id` int(11) DEFAULT NULL,
+      `pallets_out_red` int(11) DEFAULT 0,
+      `pallets_out_green` int(11) DEFAULT 0,
+      `pallets_out_orange` int(11) DEFAULT 0,
+      `status` enum('Draft','Loaded','Delivered','Verified') DEFAULT 'Draft',
+      `created_at` timestamp NULL DEFAULT current_timestamp(),
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // 5. Create delivery_items_pss
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `delivery_items_pss` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `delivery_id` int(11) DEFAULT NULL,
+      `inventory_batch_id` int(11) DEFAULT NULL,
+      `qty_cartons` int(11) DEFAULT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // 6. Create mms_logistik
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `mms_logistik` (
+      `id` varchar(50) NOT NULL,
+      `name` varchar(255) NOT NULL,
+      `district` varchar(50) DEFAULT NULL,
+      `date` date NOT NULL,
+      `totalCartons` int(11) NOT NULL,
+      `extraPacks` int(11) NOT NULL,
+      `isDelivered` tinyint(1) DEFAULT 0,
+      `isDocSigned` tinyint(1) DEFAULT 0,
+      `dealer` varchar(50) DEFAULT 'admin',
+      `co_no` varchar(100) DEFAULT NULL,
+      `delivery_date` date DEFAULT NULL,
+      `plan_date` date DEFAULT NULL,
+      PRIMARY KEY (`id`),
+      KEY `idx_dealer` (`dealer`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // 7. Create vehicles
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `vehicles` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `v_name` varchar(50) NOT NULL,
+      `v_capacity` int(11) NOT NULL,
+      `owner` varchar(50) DEFAULT 'admin',
+      `is_enabled` tinyint(1) DEFAULT 1,
+      `v_priority` int(11) DEFAULT 1,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+} catch (Exception $e) {
+    error_log("PSS auto-migration failed: " . $e->getMessage());
+}
+
 $error = '';
 $history = [];
 

@@ -2,7 +2,8 @@
 // daily_closing_history.php - View Daily Closing Stock Audit Matrix
 // MMS Warehouse System | Moo Moo Supplies
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
@@ -11,7 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $role = $_SESSION['role'] ?? '';
-$is_staff = ($role === 'admin' || $role === 'staff');
+$is_staff = is_staff_role($role);
 
 if (!$is_staff) {
     header('Location: login.php');

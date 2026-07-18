@@ -51,6 +51,9 @@ if (!function_exists('log_system_activity')) {
     }
 }
 
+// Include User Authorization Helper & Interceptor
+require_once __DIR__ . '/../includes/auth.php';
+
 // Auto-migration has completed, commenting out to save redundant DB queries on every request.
 /*
 try {

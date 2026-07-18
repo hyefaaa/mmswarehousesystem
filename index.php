@@ -39,10 +39,64 @@ try {
         ORDER BY total_qty ASC
         LIMIT 10
     ")->fetchAll();
+
+    // Ambil permohonan stok Jomcha yang pending (untuk admin/staff gudang)
+    $pending_jomcha_requests = $pdo->query("
+        SELECT r.*, 
+               (SELECT COUNT(*) FROM jomcha_request_items WHERE request_id = r.id) as item_count,
+               (SELECT SUM(qty_requested) FROM jomcha_request_items WHERE request_id = r.id) as total_qty
+        FROM jomcha_requests r
+        WHERE r.status = 'Pending'
+        ORDER BY r.id DESC
+        LIMIT 10
+    ")->fetchAll();
 } catch (Exception $e) {
     $total_products = $total_stock = $pending_spoilage = 0;
     $expiring_batches = [];
     $low_stock_products = [];
+    $pending_jomcha_requests = [];
+}
+
+$is_jomcha = (strtolower($role) === 'staff_jomcha');
+$total_pending_req = 0;
+$total_approved_req = 0;
+$total_rejected_req = 0;
+$days_since_last_take = null;
+$last_take_date_fmt = "Belum Pernah";
+$recent_jomcha_requests = [];
+
+if ($is_jomcha) {
+    try {
+        $lt = $pdo->query("SELECT MAX(take_date) as last_date FROM jomcha_stock_takes")->fetch();
+        if ($lt && $lt['last_date']) {
+            $last_take_date_fmt = date('d/m/Y', strtotime($lt['last_date']));
+            $days_since_last_take = (new DateTime($lt['last_date']))->diff(new DateTime())->days;
+        }
+
+        $total_pending_req = $pdo->prepare("SELECT COUNT(*) FROM jomcha_requests WHERE requested_by = ? AND status = 'Pending'");
+        $total_pending_req->execute([$username]);
+        $total_pending_req = $total_pending_req->fetchColumn();
+
+        $total_approved_req = $pdo->prepare("SELECT COUNT(*) FROM jomcha_requests WHERE requested_by = ? AND status = 'Approved' AND MONTH(request_date) = MONTH(CURDATE())");
+        $total_approved_req->execute([$username]);
+        $total_approved_req = $total_approved_req->fetchColumn();
+
+        $total_rejected_req = $pdo->prepare("SELECT COUNT(*) FROM jomcha_requests WHERE requested_by = ? AND status = 'Rejected'");
+        $total_rejected_req->execute([$username]);
+        $total_rejected_req = $total_rejected_req->fetchColumn();
+
+        $recent_jomcha_stmt = $pdo->prepare("
+            SELECT r.*, 
+                   (SELECT COUNT(*) FROM jomcha_request_items WHERE request_id = r.id) as item_count,
+                   (SELECT SUM(qty_requested) FROM jomcha_request_items WHERE request_id = r.id) as total_qty
+            FROM jomcha_requests r
+            WHERE r.requested_by = ?
+            ORDER BY r.id DESC
+            LIMIT 5
+        ");
+        $recent_jomcha_stmt->execute([$username]);
+        $recent_jomcha_requests = $recent_jomcha_stmt->fetchAll();
+    } catch (Exception $e) {}
 }
 
 $page_title = 'MMS Master Hub | Susumura';
@@ -203,6 +257,8 @@ require_once 'includes/header.php';
             width: 44px; height: 44px;
             font-size: 1.2rem;
             margin-right: 0.9rem;
+        }
+    }
     /* Shimmer Progress bar for PSS */
     .progress-wrap-hd {
         background: rgba(255,255,255,0.12);
@@ -233,7 +289,10 @@ require_once 'includes/header.php';
             <div class="col-md-8 d-flex flex-column flex-md-row align-items-center gap-3 text-center text-md-start">
                 <img src="img/logo.png" alt="MMS Logo" style="height: 60px; width: auto; border-radius: 12px; border: 2.5px solid rgba(255,255,255,0.25); box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
                 <div>
-                    <?php if ($is_staff): ?>
+                    <?php if ($is_jomcha): ?>
+                    <h1 class="fw-800 mb-0" style="font-size: 2.1rem; letter-spacing: -0.5px;" data-lang="jomcha_dash_title">JOMCHA OUTLET HUB</h1>
+                    <p class="opacity-75 mb-0 fw-light" style="font-size: 0.92rem;" data-lang="jomcha_dash_subtitle">Jomcha Outlet Requisitions & Stock Management Portal</p>
+                    <?php elseif ($is_staff): ?>
                     <h1 class="fw-800 mb-0" style="font-size: 2.1rem; letter-spacing: -0.5px;" data-lang="dash_title">MMS MASTER HUB</h1>
                     <p class="opacity-75 mb-0 fw-light" style="font-size: 0.92rem;" data-lang="dash_subtitle">Warehouse Management & Logistics Command Center</p>
                     <?php else: ?>
@@ -261,7 +320,140 @@ require_once 'includes/header.php';
 </div>
 
 <div class="container-fluid px-4 pb-5">
-    <?php if ($is_staff): ?>
+    <?php if ($is_jomcha): ?>
+    <!-- ==================== JOMCHA OUTLET DASHBOARD ==================== -->
+
+    <!-- Statistic Cards Row for Jomcha -->
+    <div class="row g-4 mb-4">
+        <!-- Pending Requests -->
+        <div class="col-md-6">
+            <div class="card stat-card p-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #d97706 !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label text-warning-emphasis fw-bold text-uppercase" style="letter-spacing:0.5px; font-size:0.75rem;" data-lang="jomcha_dash_stat_pending_lbl">Permohonan Pending</div>
+                        <div class="stat-value text-warning-emphasis mt-2 fw-extrabold" style="font-size:2rem;"><?= $total_pending_req ?></div>
+                        <div class="small text-muted mt-1" style="font-size:0.78rem;" data-lang="jomcha_dash_stat_pending_sub">Menunggu kelulusan gudang</div>
+                    </div>
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning-emphasis rounded-3 p-3 mb-0">
+                        <i class="bi bi-clock-history fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved This Month -->
+        <div class="col-md-6">
+            <div class="card stat-card p-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); border-left: 5px solid #0d9488 !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label text-teal-emphasis fw-bold text-uppercase" style="letter-spacing:0.5px; font-size:0.75rem;" data-lang="jomcha_dash_stat_approved_lbl">Diluluskan Bulan Ini</div>
+                        <div class="stat-value text-teal-emphasis mt-2 fw-extrabold" style="font-size:2rem;"><?= $total_approved_req ?></div>
+                        <div class="small text-muted mt-1" style="font-size:0.78rem;" data-lang="jomcha_dash_stat_approved_sub">Karton diterima dari gudang</div>
+                    </div>
+                    <div class="stat-icon bg-teal bg-opacity-10 text-teal-emphasis rounded-3 p-3 mb-0">
+                        <i class="bi bi-check-circle fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Requisition Quick Card -->
+        <div class="col-md-4">
+            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%); border: 1px solid #ddd6fe !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
+                <div>
+                    <div class="my-4">
+                        <i class="bi bi-cart-plus-fill text-primary-emphasis" style="font-size: 4.5rem; filter: drop-shadow(0 4px 6px rgba(124, 58, 237, 0.15));"></i>
+                    </div>
+                    <h4 class="fw-extrabold" style="color: #3b0764; letter-spacing: -0.5px;" data-lang="jomcha_dash_card_title">Mohon Stok Gudang</h4>
+                    <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_card_desc">Hantar permohonan bekalan karton baharu dari Warehouse utama terus ke outlet Jomcha anda.</p>
+                </div>
+                <a href="jomcha_request_stock.php" class="btn btn-primary btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); border: none; font-size:1.05rem;">
+                    <i class="bi bi-plus-lg me-2"></i> <span data-lang="jomcha_dash_card_btn">Buka Borang Permohonan</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Stock Take Quick Card -->
+        <div class="col-md-4">
+            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1px solid #e9d5ff !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
+                <div>
+                    <div class="my-4">
+                        <i class="bi bi-clipboard-check text-purple" style="font-size: 4.5rem; color: #a855f7; filter: drop-shadow(0 4px 6px rgba(168, 85, 247, 0.15));"></i>
+                    </div>
+                    <h4 class="fw-extrabold" style="color: #3b0764; letter-spacing: -0.5px;" data-lang="jomcha_dash_st_title">Kiraan Stok Jomcha</h4>
+                    <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_st_desc">Kira fizikal stok kaunter & simpanan Jomcha. Auto-billing bagi perbezaan stok yang dikesan berkurang.</p>
+                </div>
+                <a href="jomcha_stock_take.php" class="btn btn-primary btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border: none; font-size:1.05rem;">
+                    <i class="bi bi-calculator me-2"></i> <span data-lang="jomcha_dash_st_btn">Mula Kira Stok</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Stock Monitor Quick Card -->
+        <div class="col-md-4">
+            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0 !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
+                <div>
+                    <div class="my-4">
+                        <i class="bi bi-display text-success" style="font-size: 4.5rem; color: #15803d; filter: drop-shadow(0 4px 6px rgba(22, 163, 74, 0.15));"></i>
+                    </div>
+                    <h4 class="fw-extrabold" style="color: #14532d; letter-spacing: -0.5px;" data-lang="jomcha_dash_mon_title">Pantau Stok Jomcha</h4>
+                    <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_mon_desc">Pantau baki kuantiti produk mengikut sub-lokasi (JC Barn, Kedai Jomcha, Store Area) secara langsung.</p>
+                </div>
+                <a href="jomcha_monitor_stock.php" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); border: none; font-size:1.05rem;">
+                    <i class="bi bi-display me-2"></i> <span data-lang="jomcha_dash_mon_btn">Buka Pemantauan Stok</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Sejarah Permohonan Ringkas -->
+        <div class="col-12 mt-4">
+            <div class="card stat-card border-0 shadow-sm rounded-3 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-navy"><i class="bi bi-list-stars text-warning me-2"></i><span data-lang="jomcha_dash_recent_title">Status Permohonan Terkini</span></h5>
+                    <a href="jomcha_request_stock.php" class="btn btn-sm btn-outline-primary rounded-pill px-3" data-lang="jomcha_dash_view_all">Lihat Semua</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-borderless mb-0" style="font-size: 0.88rem;">
+                        <thead class="table-light">
+                            <tr class="small text-muted fw-bold">
+                                <th data-lang="jomcha_id">ID</th>
+                                <th data-lang="jomcha_req_date">Tarikh Mohon</th>
+                                <th class="text-center" data-lang="jomcha_total_qty">Jumlah Kuantiti</th>
+                                <th class="text-center" data-lang="jomcha_status">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($recent_jomcha_requests)): ?>
+                                <tr><td colspan="4" class="text-center py-4 text-muted" data-lang="jomcha_empty_hist">Tiada permohonan direkodkan.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($recent_jomcha_requests as $req): 
+                                    $status_badge = 'bg-secondary';
+                                    if ($req['status'] === 'Pending') $status_badge = 'bg-warning text-dark';
+                                    if ($req['status'] === 'Approved') $status_badge = 'bg-success text-white';
+                                    if ($req['status'] === 'Rejected') $status_badge = 'bg-danger text-white';
+                                ?>
+                                    <tr class="border-bottom">
+                                        <td class="fw-bold">#<?= $req['id'] ?></td>
+                                        <td><?= date('d/m/Y', strtotime($req['request_date'])) ?></td>
+                                        <td class="text-center fw-bold text-primary"><?= $req['total_qty'] ?> ctn</td>
+                                        <td class="text-center">
+                                            <span class="badge <?= $status_badge ?> px-2.5 py-1 rounded-pill small">
+                                                <?= $req['status'] ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <?php elseif ($is_staff): ?>
     <div class="row g-4 mb-5">
         <div class="col-md-4">
             <div class="card stat-card p-4">
@@ -313,7 +505,7 @@ require_once 'includes/header.php';
     <?php endif; ?>
 
     <!-- Expiry Risk & Low Stock Alert Dashboard Section -->
-    <?php if ($is_staff && (!empty($expiring_batches) || !empty($low_stock_products))): ?>
+    <?php if ($is_staff && !$is_jomcha && (!empty($expiring_batches) || !empty($low_stock_products))): ?>
     <?php 
     $has_expiry = !empty($expiring_batches);
     $col_class = $has_expiry ? 'col-lg-6' : 'col-lg-12';
@@ -325,7 +517,7 @@ require_once 'includes/header.php';
         <div class="<?= $col_class ?> mb-4">
             <div class="card shadow-sm border-0 border-start border-warning border-5 h-100" style="border-radius: 16px; overflow: hidden;">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                    <h6 class="fw-800 text-warning mb-0"><i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i><span data-lang="dash_expiry_title">EXPIRY RISK MONITOR (FEFO CONTROL)</span></h6>
+                    <h6 class="fw-800 text-warning mb-0"><i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i><span data-lang="dash_expiry_title">EXPIRY RISK MONITOR (FIFO CONTROL)</span></h6>
                     <span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill"><?= count($expiring_batches) ?> Batch</span>
                 </div>
                 <div class="card-body p-0" style="max-height: 380px; overflow-y: auto;">
@@ -397,7 +589,7 @@ require_once 'includes/header.php';
                                     ?>
                                     <tr>
                                         <td class="ps-3 fw-bold text-dark text-truncate" style="max-width: 220px;"><?= htmlspecialchars($lp['name']) ?></td>
-                                        <td><span class="badge-cat"><?= htmlspecialchars($lp['category']) ?></span></td>
+                                         <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($lp['category']) ?></span></td>
                                         <td class="text-end pe-4 fw-bold text-<?= $color ?>">
                                             <span class="badge <?= $badge_class ?> rounded-pill px-2.5 py-1">
                                                 <?= number_format($qty) ?> ctn
@@ -416,8 +608,70 @@ require_once 'includes/header.php';
     </div>
     <?php endif; ?>
 
+    <!-- Jomcha Requisition Alert Section -->
+    <?php if ($is_staff && !$is_jomcha && !empty($pending_jomcha_requests)): ?>
+    <div class="row mb-5 animate-fade-in">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 border-start border-purple border-5 animate-fade-in" style="border-radius: 16px; overflow: hidden; --mms-purple: #8b5cf6;">
+                <style>
+                    .border-purple { border-left-color: var(--mms-purple) !important; }
+                    .text-purple { color: var(--mms-purple) !important; }
+                    .bg-purple-subtle { background-color: #f5f3ff !important; }
+                </style>
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h6 class="fw-800 text-purple mb-0">
+                        <i class="bi bi-cart-fill me-2 fs-5"></i>
+                        <span data-lang="dash_jomcha_req_title">PENDING JOMCHA REQUISITIONS</span>
+                    </h6>
+                    <span class="badge bg-purple text-white fw-bold px-3 py-2 rounded-pill" style="background-color: var(--mms-purple) !important;">
+                        <?= count($pending_jomcha_requests) ?> Pending
+                    </span>
+                </div>
+                <div class="card-body p-0" style="max-height: 380px; overflow-y: auto;">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 0.82rem;">
+                            <thead class="table-light">
+                                <tr class="text-secondary small fw-bold">
+                                    <th class="ps-3" data-lang="jomcha_id">ID</th>
+                                    <th data-lang="jomcha_req_date">Tarikh Mohon</th>
+                                    <th data-lang="jomcha_req_by">Dipohon Oleh</th>
+                                    <th class="text-center" data-lang="jomcha_item_count">Jumlah Item</th>
+                                    <th class="text-center" data-lang="jomcha_total_qty">Jumlah Kuantiti</th>
+                                    <th class="text-center" data-lang="jomcha_status">Status</th>
+                                    <th class="text-end pe-3" data-lang="jomcha_action">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($pending_jomcha_requests as $req): ?>
+                                <tr>
+                                    <td class="ps-3 fw-bold">#<?= $req['id'] ?></td>
+                                    <td><?= date('d/m/Y', strtotime($req['request_date'])) ?></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($req['requested_by']) ?></span></td>
+                                    <td class="text-center fw-semibold"><?= $req['item_count'] ?> <span data-lang="lbl_product_unit">product</span></td>
+                                    <td class="text-center fw-bold text-primary"><?= number_format($req['total_qty']) ?> ctn</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning text-dark px-3 py-1 rounded-pill fw-bold">
+                                            <?= $req['status'] ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <a href="jomcha_request_stock.php" class="btn btn-sm text-white px-3 py-1 fw-bold rounded-pill" style="background-color: var(--mms-purple);" data-lang="dash_jomcha_req_btn">
+                                            Semak Permohonan
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="row g-4 justify-content-center">
-        <?php if ($is_staff): ?>
+        <?php if ($is_staff && !$is_jomcha): ?>
         <!-- SEKSYEN 1: GUDANG & INVENTORI -->
         <div class="col-xl-3 col-md-6">
             <div class="section-title" data-lang="sec_stock_receiving">Gudang & Inventori</div>
@@ -582,7 +836,28 @@ require_once 'includes/header.php';
             </a>
             <?php endif; ?>
         </div>
-        <?php else: ?>
+
+        <!-- SEKSYEN 5: PENGURUSAN JOMCHA -->
+        <div class="col-xl-3 col-md-6">
+            <div class="section-title text-purple" style="border-left-color: #a855f7;"><i class="bi bi-shop me-1 text-purple"></i><span data-lang="sec_jomcha_mgmt">Pengurusan Jomcha</span></div>
+            
+            <a href="jomcha_outbound.php" class="nav-card border-start border-purple border-4" style="background: #faf5ff; border-left-color: #a855f7 !important;">
+                <div class="icon-box text-white" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);"><i class="bi bi-truck-flatbed"></i></div>
+                <div class="content">
+                    <span class="title" data-lang="card_jomcha_out">Jomcha Outbound</span>
+                    <span class="desc" data-lang="card_jomcha_out_d">Keluarkan stok dari gudang utama ke outlet kedai Jomcha.</span>
+                </div>
+            </a>
+            
+            <a href="jomcha_request_stock.php" class="nav-card">
+                <div class="icon-box text-white" style="background: #a855f7;"><i class="bi bi-cart-plus-fill"></i></div>
+                <div class="content">
+                    <span class="title" data-lang="card_jomcha_req">Permohonan Stok Jomcha</span>
+                    <span class="desc" data-lang="card_jomcha_req_d">Semak dan luluskan permohonan bekalan stok dari outlet Jomcha.</span>
+                </div>
+            </a>
+        </div>
+        <?php elseif (!$is_staff && !$is_jomcha): ?>
         <!-- DEALER / HD VIEW: PSS Dashboard with Live Analytics -->
 
         <!-- Mini Stats Row -->
@@ -867,4 +1142,4 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once 'includes/footer.php'; ?>

@@ -5,11 +5,11 @@ header('Content-Type: application/json');
 require_once 'config/db.php';
 
 try {
-    // Switch connection context to susumura_mms_logistik
+    // Switch connection context to susumura_mms_logistik, fallback to main if it fails
     $pdo->exec("USE susumura_mms_logistik");
 } catch (PDOException $e) {
-    http_response_code(500);
-    die(json_encode(['error' => 'Gagal menyambung ke database susumura_mms_logistik: ' . $e->getMessage()]));
+    // Fallback to the main database context
+    error_log("USE susumura_mms_logistik failed, falling back to main database: " . $e->getMessage());
 }
 
 $action = $_GET['action'] ?? '';
@@ -17,7 +17,7 @@ $action = $_GET['action'] ?? '';
 // --- 1. GET VEHICLES ---
 if ($action == 'get_vehicles') {
     $dealer = $_GET['dealer'] ?? '';
-    $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE owner = ? OR owner = 'admin' ORDER BY id ASC");
+    $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE owner = ? ORDER BY id ASC");
     $stmt->execute([$dealer]);
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     exit;
@@ -25,16 +25,42 @@ if ($action == 'get_vehicles') {
 
 // --- 2. SAVE VEHICLES ---
 if ($action == 'save_vehicles_global') {
-    $data = json_decode(file_get_contents('php://input'), true);
-    if (!empty($data)) {
-        $owner = $data[0]['owner'];
-        $pdo->prepare("DELETE FROM vehicles WHERE owner = ?")->execute([$owner]);
-        $stmt = $pdo->prepare("INSERT INTO vehicles (v_name, v_capacity, owner, is_enabled, v_priority) VALUES (?, ?, ?, 1, 1)");
-        foreach ($data as $v) {
-            $stmt->execute([$v['v_name'], $v['v_capacity'], $v['owner']]);
-        }
-        echo json_encode(['status' => 'success']);
+    $payload = json_decode(file_get_contents('php://input'), true);
+    if (!isset($payload)) {
+        echo json_encode(['error' => 'Invalid payload.']);
+        exit;
     }
+
+    // Support both old format (plain array) and new format ({owner, vehicles})
+    if (isset($payload['owner'])) {
+        $owner    = trim($payload['owner']);
+        $vehicles = $payload['vehicles'] ?? [];
+    } elseif (is_array($payload) && isset($payload[0]['owner'])) {
+        $owner    = trim($payload[0]['owner']);
+        $vehicles = $payload;
+    } else {
+        echo json_encode(['error' => 'Cannot determine owner.']);
+        exit;
+    }
+
+    if (empty($owner)) {
+        echo json_encode(['error' => 'Owner is required.']);
+        exit;
+    }
+
+    // Delete all existing vehicles for this owner, then re-insert remaining
+    $pdo->prepare("DELETE FROM vehicles WHERE owner = ?")->execute([$owner]);
+
+    if (!empty($vehicles)) {
+        $stmt = $pdo->prepare("INSERT INTO vehicles (v_name, v_capacity, owner, is_enabled, v_priority) VALUES (?, ?, ?, 1, 1)");
+        foreach ($vehicles as $v) {
+            $name = trim($v['v_name'] ?? '');
+            if ($name === '') continue;
+            $stmt->execute([$name, (int)($v['v_capacity'] ?? 0), $owner]);
+        }
+    }
+
+    echo json_encode(['status' => 'success', 'count' => count($vehicles)]);
     exit;
 }
 

@@ -2,7 +2,8 @@
 // inventory_report.php - Laporan Inventori Lengkap
 // MMS Warehouse System | Moo Moo Supplies
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
@@ -11,6 +12,7 @@ $filter_category = $_GET['category'] ?? '';
 $filter_location = $_GET['location'] ?? '';
 $filter_product  = $_GET['product'] ?? '';
 $filter_stock    = $_GET['stock_filter'] ?? ''; // 'all', 'in_stock', 'zero'
+$filter_expiry   = $_GET['expiry'] ?? '';
 
 // --- FETCH CATEGORIES & PRODUCTS FOR FILTER DROPDOWNS ---
 $all_categories = $pdo->query("SELECT DISTINCT category FROM products WHERE is_active = 1 ORDER BY category ASC")->fetchAll(PDO::FETCH_COLUMN);
@@ -78,6 +80,10 @@ if (!empty($filter_location)) {
 if (!empty($filter_product)) {
     $sql .= " AND p.name LIKE ?";
     $params[] = "%$filter_product%";
+}
+if (!empty($filter_expiry)) {
+    $sql .= " AND b.expiry_date = ?";
+    $params[] = $filter_expiry;
 }
 if ($filter_stock === 'in_stock') {
     $sql .= " AND b.qty_on_hand > 0";
@@ -293,17 +299,17 @@ require_once 'includes/header.php';
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h1 class="fw-800 mb-1 fs-4"><i class="bi bi-clipboard2-data me-2"></i>Inventory Report</h1>
-                <p class="opacity-75 mb-0 small">Laporan Stok Semasa — <?= date('d F Y, h:i A') ?></p>
+                <h1 class="fw-800 mb-1 fs-4"><i class="bi bi-clipboard2-data me-2"></i><span data-lang="inv_title">Inventory Report</span></h1>
+                <p class="opacity-75 mb-0 small"><span data-lang="inv_subtitle">Laporan Stok Semasa</span> — <?= date('d F Y, h:i A') ?></p>
             </div>
             <div class="d-flex gap-2 no-print">
-                <a href="index.php" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <a href="reports.php" class="btn btn-outline-light btn-sm"><i class="bi bi-graph-up-arrow me-1"></i> Monitor</a>
+                <a href="index.php" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
+                <a href="reports.php" class="btn btn-outline-light btn-sm"><i class="bi bi-graph-up-arrow me-1"></i> <span data-lang="nav_wh_monitor">Monitor</span></a>
                 <button onclick="window.print()" class="btn btn-sm fw-bold" style="background:#06b6d4; color:white;">
-                    <i class="bi bi-printer me-1"></i> Print
+                    <i class="bi bi-printer me-1"></i> <span data-lang="inv_btn_print">Print</span>
                 </button>
                 <button onclick="exportCSV()" class="btn btn-success btn-sm fw-bold">
-                    <i class="bi bi-file-earmark-excel me-1"></i> Export CSV
+                    <i class="bi bi-file-earmark-excel me-1"></i> <span data-lang="inv_btn_export">Export CSV</span>
                 </button>
             </div>
         </div>
@@ -321,25 +327,25 @@ require_once 'includes/header.php';
         <div class="col-6 col-md-3">
             <div class="stat-box blue">
                 <div class="stat-num text-primary"><?= number_format($stats['total_products'] ?? 0) ?></div>
-                <div class="stat-label"><i class="bi bi-box me-1"></i> Total Produk</div>
+                <div class="stat-label"><i class="bi bi-box me-1"></i> <span data-lang="inv_stat_products">Total Produk</span></div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-box green">
                 <div class="stat-num text-success"><?= number_format($stats['total_stock'] ?? 0) ?></div>
-                <div class="stat-label"><i class="bi bi-layers me-1"></i> Jumlah Stok (ctn)</div>
+                <div class="stat-label"><i class="bi bi-layers me-1"></i> <span data-lang="inv_stat_stock">Jumlah Stok (ctn)</span></div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-box orange">
                 <div class="stat-num text-warning"><?= number_format($low_stock_count ?? 0) ?></div>
-                <div class="stat-label"><i class="bi bi-exclamation-triangle me-1"></i> Stok Rendah (&lt;50)</div>
+                <div class="stat-label"><i class="bi bi-exclamation-triangle me-1"></i> <span data-lang="inv_stat_low">Stok Rendah (&lt;50)</span></div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-box red">
                 <div class="stat-num text-danger"><?= number_format($stats['products_no_stock'] ?? 0) ?></div>
-                <div class="stat-label"><i class="bi bi-slash-circle me-1"></i> Tiada Stok</div>
+                <div class="stat-label"><i class="bi bi-slash-circle me-1"></i> <span data-lang="inv_stat_no_stock">Tiada Stok</span></div>
             </div>
         </div>
     </div>
@@ -364,12 +370,12 @@ require_once 'includes/header.php';
 
     <!-- ===== FILTER PANEL ===== -->
     <div class="filter-card no-print">
-        <div class="filter-title"><i class="bi bi-funnel me-1"></i> Tapis Data</div>
+        <div class="filter-title"><i class="bi bi-funnel me-1"></i> <span data-lang="inv_filter_title">Tapis Data</span></div>
         <form method="GET" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Kategori</label>
+            <div class="col-xl-2 col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_cat">Kategori</label>
                 <select name="category" class="form-select form-select-sm">
-                    <option value="">-- Semua Kategori --</option>
+                    <option value="" data-lang="inv_filter_all">-- Semua Kategori --</option>
                     <?php foreach ($all_categories as $cat): ?>
                         <option value="<?= htmlspecialchars($cat) ?>" <?= ($filter_category === $cat) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($cat) ?>
@@ -377,35 +383,40 @@ require_once 'includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Nama Produk</label>
+            <div class="col-xl-3 col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_product">Nama Produk</label>
                 <input type="text" name="product" class="form-control form-control-sm" 
-                       placeholder="Cari nama produk..." 
+                       placeholder="Cari nama produk..." data-lang-placeholder="inv_filter_product_placeholder"
                        value="<?= htmlspecialchars($filter_product) ?>">
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Lokasi</label>
+            <div class="col-xl-2 col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_col_expiry">Tarikh Luput</label>
+                <input type="date" name="expiry" class="form-control form-control-sm" 
+                       value="<?= htmlspecialchars($filter_expiry) ?>">
+            </div>
+            <div class="col-xl-2 col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_loc">Lokasi</label>
                 <select name="location" class="form-select form-select-sm">
-                    <option value="">-- Semua Lokasi --</option>
+                    <option value="" data-lang="inv_filter_all">-- Semua Lokasi --</option>
                     <option value="Warehouse" <?= ($filter_location === 'Warehouse') ? 'selected' : '' ?>>Warehouse</option>
                     <option value="Buffer"    <?= ($filter_location === 'Buffer')    ? 'selected' : '' ?>>Buffer</option>
                     <option value="Shop"      <?= ($filter_location === 'Shop')      ? 'selected' : '' ?>>Shop</option>
                     <option value="Damaged"   <?= ($filter_location === 'Damaged')   ? 'selected' : '' ?>>Damaged</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Status Stok</label>
+            <div class="col-xl-2 col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_stock">Status Stok</label>
                 <select name="stock_filter" class="form-select form-select-sm">
-                    <option value="">-- Semua --</option>
-                    <option value="in_stock" <?= ($filter_stock === 'in_stock') ? 'selected' : '' ?>>Ada Stok Sahaja</option>
-                    <option value="zero"     <?= ($filter_stock === 'zero')     ? 'selected' : '' ?>>Kosong Sahaja</option>
+                    <option value="" data-lang="inv_filter_all">-- Semua --</option>
+                    <option value="in_stock" <?= ($filter_stock === 'in_stock') ? 'selected' : '' ?> data-lang="inv_filter_in_stock">Ada Stok Sahaja</option>
+                    <option value="zero"     <?= ($filter_stock === 'zero')     ? 'selected' : '' ?> data-lang="inv_filter_zero">Kosong Sahaja</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-sm fw-bold w-100" style="background:#0f172a; color:white;">
-                    <i class="bi bi-search me-1"></i> Cari
+            <div class="col-xl-1 col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-sm fw-bold w-100" style="background:#0f172a; color:white;" data-lang-title="btn_search" title="Cari">
+                    <i class="bi bi-search"></i>
                 </button>
-                <a href="inventory_report.php" class="btn btn-sm btn-light border w-100">
+                <a href="inventory_report.php" class="btn btn-sm btn-light border w-100" data-lang-title="btn_reset" title="Reset">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
             </div>
@@ -416,9 +427,9 @@ require_once 'includes/header.php';
     <div class="inv-table-wrap">
         <div class="table-header">
             <div>
-                <span class="fw-800 text-dark"><i class="bi bi-table me-2 text-info"></i>Senarai Inventori</span>
+                <span class="fw-800 text-dark"><i class="bi bi-table me-2 text-info"></i><span data-lang="inv_table_title">Senarai Inventori</span></span>
                 <span class="badge bg-secondary ms-2"><?= count($inventory) ?> baris</span>
-                <?php if (!empty($filter_category) || !empty($filter_product) || !empty($filter_location) || !empty($filter_stock)): ?>
+                <?php if (!empty($filter_category) || !empty($filter_product) || !empty($filter_location) || !empty($filter_stock) || !empty($filter_expiry)): ?>
                     <span class="badge ms-1" style="background:#06b6d4;">Filtered</span>
                 <?php endif; ?>
             </div>
@@ -428,9 +439,9 @@ require_once 'includes/header.php';
         <?php if (empty($inventory)): ?>
             <div class="empty-state">
                 <i class="bi bi-inbox"></i>
-                <h5 class="fw-bold">Tiada Data</h5>
-                <p class="text-muted small">Tiada rekod inventori yang sepadan dengan tapisan anda.</p>
-                <a href="inventory_report.php" class="btn btn-outline-secondary btn-sm">Reset Tapisan</a>
+                <h5 class="fw-bold" data-lang="inv_empty">Tiada Data</h5>
+                <p class="text-muted small" data-lang="inv_empty_sub">Tiada rekod inventori yang sepadan dengan tapisan anda.</p>
+                <a href="inventory_report.php" class="btn btn-outline-secondary btn-sm" data-lang="inv_reset">Reset Tapisan</a>
             </div>
         <?php else: ?>
         <div class="table-responsive">
@@ -438,16 +449,16 @@ require_once 'includes/header.php';
                 <thead>
                     <tr>
                         <th style="width:40px">#</th>
-                        <th>Nama Produk</th>
-                        <th>Kategori</th>
-                        <th>Batch No.</th>
-                        <th>Lot No.</th>
-                        <th>Tarikh Luput</th>
-                        <th>Lokasi</th>
-                        <th class="text-end">Stok (ctn)</th>
-                        <th class="text-end no-print">Stok (pcs)</th>
-                        <th>Jenis Pallet</th>
-                        <th class="no-print">Tarikh Masuk</th>
+                        <th data-lang="inv_col_product">Nama Produk</th>
+                        <th data-lang="inv_col_category">Kategori</th>
+                        <th data-lang="inv_col_lot">Lot No.</th>
+                        <th data-lang="inv_col_batch">Batch No.</th>
+                        <th data-lang="inv_col_expiry">Tarikh Luput</th>
+                        <th data-lang="inv_col_location">Lokasi</th>
+                        <th class="text-end" data-lang="inv_col_stock_ctn">Stok (ctn)</th>
+                        <th class="text-end no-print" data-lang="inv_col_stock_pcs">Stok (pcs)</th>
+                        <th data-lang="inv_col_pallet">Jenis Pallet</th>
+                        <th class="no-print" data-lang="inv_col_date_in">Tarikh Masuk</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -499,8 +510,8 @@ require_once 'includes/header.php';
                                 <?= htmlspecialchars($row['category'] ?? '') ?>
                             </span>
                         </td>
-                        <td class="font-monospace small"><?= htmlspecialchars($row['batch_no'] ?? '—') ?></td>
                         <td class="font-monospace small text-muted"><?= htmlspecialchars($row['lot_no_raw'] ?? '—') ?></td>
+                        <td class="font-monospace small"><?= htmlspecialchars($row['batch_no'] ?? '—') ?></td>
                         <td>
                             <?php
                                 if (!empty($row['expiry_date'])) {

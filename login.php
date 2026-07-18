@@ -2,7 +2,8 @@
 // login.php
 // Portal Log Masuk Premium (Glassmorphism & Secure authentication)
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -178,12 +179,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 padding: 15px;
             }
         }
+
+        #lang-btn-en.active, #lang-btn-ms.active {
+            background: rgba(6,182,212,0.85) !important;
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(6,182,212,0.4);
+        }
+        #lang-btn-en:hover:not(.active), #lang-btn-ms:hover:not(.active) {
+            background: rgba(255,255,255,0.12) !important;
+            color: white !important;
+        }
     </style>
 </head>
 <body>
 
     <div class="glow-circle glow-1"></div>
     <div class="glow-circle glow-2"></div>
+
+    <!-- Floating Language Selector at the top right -->
+    <div style="position: absolute; top: 20px; right: 20px; z-index: 100;">
+        <div class="d-flex align-items-center" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 3px 4px; gap: 2px;">
+            <button id="lang-btn-en"
+                    onclick="MMS_LANG.set('en')"
+                    title="Switch to English"
+                    style="background:transparent; border:none; border-radius:16px; padding:3px 9px; font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.6); cursor:pointer; transition:all 0.2s; letter-spacing:0.3px;">
+                🇬🇧 EN
+            </button>
+            <button id="lang-btn-ms"
+                    onclick="MMS_LANG.set('ms')"
+                    title="Tukar ke Bahasa Melayu"
+                    style="background:transparent; border:none; border-radius:16px; padding:3px 9px; font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.6); cursor:pointer; transition:all 0.2s; letter-spacing:0.3px;">
+                🇲🇾 BM
+            </button>
+        </div>
+    </div>
 
     <div class="login-card text-center">
         
@@ -192,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <h3 class="fw-800 text-white mb-1" style="letter-spacing: -0.5px;">MOO MOO SUPPLIES</h3>
-        <p class="small mb-4" style="color: #cbd5e1;">Warehouse & Logistics Management</p>
+        <p class="small mb-4" style="color: #cbd5e1;" data-lang="login_title">Warehouse & Logistics Management</p>
 
         <?php if (!empty($error)): ?>
             <div class="alert alert-danger border-0 bg-danger bg-opacity-10 text-danger text-start small p-3 rounded-3" role="alert">
@@ -200,27 +229,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="login.php" class="text-start">
+        <form method="POST" action="login.php" class="text-start" id="loginForm">
             <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input type="text" name="username" class="form-control" placeholder="Type username" required autocomplete="username">
+                <label class="form-label" data-lang="login_username">Username</label>
+                <input type="text" name="username" class="form-control" placeholder="Type username" data-lang-placeholder="login_username" required autocomplete="username">
             </div>
             
             <div class="mb-4">
-                <label class="form-label">Password</label>
-                <input type="password" name="password" class="form-control" placeholder="Type password" required autocomplete="current-password">
+                <label class="form-label" data-lang="login_password">Password</label>
+                <input type="password" name="password" class="form-control" placeholder="Type password" data-lang-placeholder="login_password" required autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn btn-mms-submit w-100 py-3 mt-2 shadow-lg">
-                <i class="bi bi-shield-lock-fill me-2"></i> LOG IN TO PORTAL
+                <i class="bi bi-shield-lock-fill me-2"></i> <span data-lang="login_btn">LOG IN TO PORTAL</span>
             </button>
         </form>
         
         <div class="mt-4 pt-2 border-top border-secondary border-opacity-10">
-            <p class="small mb-0" style="color: #cbd5e1;"><i class="bi bi-lock me-1"></i> Intranet Access Only</p>
+            <p class="small mb-0" style="color: #cbd5e1;"><i class="bi bi-lock me-1"></i> <span data-lang="login_intranet">Intranet Access Only</span></p>
         </div>
 
     </div>
 
+    <!-- MMS Dual Language Engine -->
+    <script src="lang/translations.js?v=<?= time() ?>"></script>
 </body>
 </html>

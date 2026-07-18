@@ -3,9 +3,18 @@
 // Handles CSV Import for Schools
 // UPDATED: Fixed "No active transaction" error (Moved DDL outside transaction) & removed deprecated settings
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once '../config/db.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['user_id']) || !is_staff_role($_SESSION['role'] ?? '')) {
+    http_response_code(403);
+    die("❌ Error: Akses dinafikan. Hanya staf dibenarkan.");
+}
 
 // REMOVED: ini_set('auto_detect_line_endings', true); (Deprecated in PHP 8.1+)
 
@@ -23,11 +32,14 @@ if ($handle === FALSE) {
 // --- CRITICAL FIX: EXPAND DATABASE COLUMN ---
 // MOVED OUTSIDE TRANSACTION: DDL statements (ALTER TABLE) cause an implicit commit in MySQL.
 // Must run this before starting the transaction.
+// ALTER TABLE modification is commented out since the schema migration is already completed.
+/*
 try {
     $pdo->exec("ALTER TABLE schools MODIFY COLUMN zone_code VARCHAR(100)");
 } catch (Exception $e) {
     // Ignore error if permission denied or column issues
 }
+*/
 // ---------------------------------------------
 
 try {

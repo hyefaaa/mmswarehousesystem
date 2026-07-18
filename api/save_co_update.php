@@ -13,6 +13,15 @@ if (!file_exists('../config/db.php')) {
 }
 require_once '../config/db.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['user_id']) || !is_staff_role($_SESSION['role'] ?? '')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized Access']);
+    exit;
+}
+
 // 2. Capture POST Data
 $contract_no = $_POST['contract_no'] ?? '';
 $co_no       = $_POST['co_no'] ?? '';
@@ -40,6 +49,8 @@ $header_found = false;
 $col_map = []; 
 
 try {
+    $pdo->beginTransaction();
+
     // PREPARE STATEMENTS ONCE (Optimization)
     // We check against 'schools' because that is the correct table name in your system
     $check_stmt = $pdo->prepare("SELECT id FROM schools WHERE school_code = ?");
@@ -106,6 +117,7 @@ try {
 
     fclose($file);
 
+    $pdo->commit();
     echo json_encode([
         'success' => true,
         'updated' => $updated_count,
@@ -114,6 +126,9 @@ try {
     ]);
 
 } catch (Exception $e) {
+    if (isset($pdo) && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

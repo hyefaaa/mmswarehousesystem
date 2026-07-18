@@ -53,6 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle status toggles
 if (isset($_GET['toggle_id'])) {
+    if (function_exists('check_write_permission') && !check_write_permission('product_management.php')) {
+        header("Location: product_management.php?error=no_permission");
+        exit;
+    }
     $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = ?");
     $stmt->execute([$_GET['toggle_id']]);
     header("Location: product_management.php");
@@ -170,7 +174,7 @@ require_once 'includes/header.php';
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="badge badge-cat"><?= htmlspecialchars($p['category']) ?></span></td>
+                                <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($p['category']) ?></span></td>
                                 <td class="text-center">
                                     <small class="fw-bold text-uppercase"><?= htmlspecialchars($p['uom']) ?></small>
                                 </td>

@@ -2,7 +2,8 @@
 // api/save_receiving_multi.php
 // UPDATED: Saving FFM Green & LHP Green to dedicated columns
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 if (!file_exists('../config/db.php')) {
@@ -125,7 +126,7 @@ try {
     foreach ($items as $item) {
         $prod_id   = $item['product_id'];
         $batch     = $item['batch_no'] ?? $item['batch'] ?? '';
-        $qty       = $item['qty'];
+        $qty       = $item['qty'] ?? 0;
         $prod_time = !empty($item['production_time']) ? $item['production_time'] : null;
         $expiry    = convertDate($item['expiry_date'] ?? $item['expiry'] ?? '');
         
@@ -162,7 +163,9 @@ try {
     </script>";
 
 } catch (Exception $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     die("❌ Error Saving Data: " . $e->getMessage());
 }
 ?>

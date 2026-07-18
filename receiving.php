@@ -11,14 +11,20 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Sekatan peranan: Hanya Admin dan Staff sahaja boleh menerima stok
 $role = $_SESSION['role'] ?? '';
-$is_staff = ($role === 'admin' || $role === 'staff');
+$is_staff = is_staff_role($role);
 if (!$is_staff) {
     http_response_code(403);
-    echo '<div style="font-family: sans-serif; text-align: center; padding: 100px 20px;">
-            <h1 style="color: #e74c3c;">🚫 Akses Dihalang!</h1>
-            <p>Anda tidak mempunyai kebenaran untuk mengakses halaman penerimaan stok ini.</p>
-            <a href="index.php" style="color: #3498db; font-weight: bold; text-decoration: none;">Kembali ke Dashboard</a>
+    $page_title = 'Akses Dihalang';
+    require_once 'includes/header.php';
+    echo '<div class="container-fluid px-4 py-5 text-center">
+            <div class="card shadow-sm mx-auto p-5" style="max-width: 500px; border-radius: 16px;">
+                <h1 style="color: #e74c3c;" class="display-4"><i class="bi bi-shield-slash-fill"></i></h1>
+                <h3 class="fw-bold mt-3">Akses Dihalang!</h3>
+                <p class="text-muted">Akaun anda tiada kebenaran untuk mengakses halaman Penerimaan Stok.</p>
+                <a href="index.php" class="btn btn-primary mt-3 py-2 px-4" style="background: #0f172a; border: none;">Kembali ke Dashboard</a>
+            </div>
           </div>';
+    require_once 'includes/footer.php';
     exit;
 }
 
@@ -188,9 +194,21 @@ require_once 'includes/header.php';
     }
 </style>
 
-<div class="content-wrapper">
+<div class="page-header mb-4">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="fw-800 mb-1"><i class="bi bi-box-seam-fill me-2 text-warning"></i><span data-lang="nav_single_receive">Single Item Receiving</span></h1>
+                <p class="opacity-75 mb-0 fw-light">Receive and record inbound stock items with batch configurations</p>
+            </div>
+            <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 pb-5">
+<div class="content-wrapper mt-0 pt-0">
     <div class="form-container">
-        <h3 class="text-success mb-4 border-bottom pb-2 fw-800"><i class="bi bi-box-seam-fill me-2"></i>Single Item Receiving</h3>
         
         <?= $message ?>
 
@@ -198,7 +216,7 @@ require_once 'includes/header.php';
             
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Category</label>
+                    <label class="form-label fw-bold" data-lang="lbl_category">Category</label>
                     <select name="category" id="category" class="form-select" onchange="filterProducts()" required>
                         <option value="UHT" selected>UHT (Retail)</option>
                         <option value="PSS">PSS (School)</option>
@@ -206,7 +224,7 @@ require_once 'includes/header.php';
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Select Product</label>
+                    <label class="form-label fw-bold" data-lang="recv_lbl_select_product">Select Product</label>
                     <select name="product_id" id="product_id" class="form-select" required>
                         <!-- Pilihan akan dimasukkan melalui JavaScript -->
                     </select>
@@ -215,37 +233,37 @@ require_once 'includes/header.php';
 
             <div class="mb-4 bg-light p-3 rounded border border-primary border-opacity-25">
                 <label class="form-label fw-bold text-primary mb-1 d-flex justify-content-between align-items-center">
-                    <span>SCAN LOT NO:</span>
+                    <span data-lang="recv_lbl_scan_lot">SCAN LOT NO:</span>
                     <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="openCamera()">
-                        <i class="bi bi-camera-fill me-1"></i> Scan Camera
+                        <i class="bi bi-camera-fill me-1"></i> <span data-lang="recv_btn_scan_camera">Scan Camera</span>
                     </button>
                 </label>
-                <input type="text" name="lot_no" id="lot_no" class="form-control border-primary text-uppercase fw-bold" placeholder="e.g. 260831-MFB010-PP003" oninput="parseLotNo()" autocomplete="off">
-                <div class="form-text small text-muted">Mengisi butiran di bawah secara automatik daripada lot/QR barcode.</div>
+                <input type="text" name="lot_no" id="lot_no" class="form-control border-primary text-uppercase fw-bold" placeholder="e.g. 260831-MFB010-PP003" data-lang-placeholder="recv_lot_placeholder" oninput="parseLotNo()" autocomplete="off">
+                <div class="form-text small text-muted" data-lang="recv_lot_help">Mengisi butiran di bawah secara automatik daripada lot/QR barcode.</div>
             </div>
 
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Expiry Date</label>
+                    <label class="form-label fw-bold" data-lang="inv_col_expiry">Expiry Date</label>
                     <input type="date" name="expiry_date" id="expiry_date" class="form-control readonly-input" required readonly>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Batch No</label>
+                    <label class="form-label fw-bold" data-lang="dash_batch_no">Batch No</label>
                     <input type="text" name="batch_no" id="batch_no" class="form-control readonly-input text-center" required readonly>
                 </div>
             </div>
 
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Shelf Life (Months)</label>
+                    <label class="form-label fw-bold" data-lang="recv_lbl_shelf_life">Shelf Life (Months)</label>
                     <input type="text" id="shelf_life" class="form-control readonly-input text-center" readonly>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Pallet Type</label>
+                    <label class="form-label fw-bold" data-lang="inv_col_pallet">Pallet Type</label>
                     <select name="pallet_type" id="pallet_type" class="form-select" required>
-                        <option value="none">None</option>
+                        <option value="none" data-lang="pallet_none">None</option>
                         <?php foreach ($pallet_types as $pt): ?>
                             <option value="<?= htmlspecialchars($pt['code']) ?>"><?= htmlspecialchars($pt['name']) ?></option>
                         <?php endforeach; ?>
@@ -255,21 +273,22 @@ require_once 'includes/header.php';
 
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Quantity (Pieces)</label>
+                    <label class="form-label fw-bold" data-lang="recv_lbl_qty_pcs">Quantity (Pieces)</label>
                     <input type="number" id="qty_pcs" class="form-control readonly-input text-center" readonly>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold text-primary">Quantity (Cartons) *</label>
-                    <input type="number" name="qty" id="qty" class="form-control text-center fw-bold" placeholder="Masukkan Kuantiti (ctn)" required min="1">
+                    <label class="form-label fw-bold text-primary" data-lang="recv_lbl_qty_ctns">Quantity (Cartons) *</label>
+                    <input type="number" name="qty" id="qty" class="form-control text-center fw-bold" placeholder="Masukkan Kuantiti (ctn)" data-lang-placeholder="recv_placeholder_qty" required min="1">
                 </div>
             </div>
 
             <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm">Confirm Receive</button>
-                <a href="index.php" class="btn btn-secondary py-2 fw-bold">Cancel</a>
+                <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm" data-lang="recv_btn_confirm">Confirm Receive</button>
+                <a href="index.php" class="btn btn-secondary py-2 fw-bold" data-lang="btn_cancel">Cancel</a>
             </div>
         </form>
     </div>
+</div>
 </div>
 
 <!-- Modal Kamera QR/Barcode -->
@@ -278,7 +297,7 @@ require_once 'includes/header.php';
         <div class="modal-content bg-dark border-0">
             <div class="modal-body p-0 text-center position-relative">
                 <div id="reader" style="width:100%;"></div>
-                <button class="btn btn-danger m-3 px-4 fw-bold" data-bs-dismiss="modal">Tutup Kamera</button>
+                <button class="btn btn-danger m-3 px-4 fw-bold" data-bs-dismiss="modal" data-lang="recv_camera_close">Tutup Kamera</button>
             </div>
         </div>
     </div>

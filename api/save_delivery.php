@@ -11,6 +11,14 @@ if (!file_exists('../config/db.php')) {
 }
 require_once '../config/db.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    die("❌ Error: Sesi tidak sah. Sila log masuk semula.");
+}
+
 function convertDate($dateStr) {
     if (empty($dateStr)) return null;
     if (strpos($dateStr, '-') !== false) return $dateStr;
@@ -27,12 +35,16 @@ try {
     $school_id          = !empty($_POST['school_id']) ? (int)$_POST['school_id'] : null;
     $inventory_batch_id = !empty($_POST['inventory_batch_id']) ? (int)$_POST['inventory_batch_id'] : null;
     $qty_cartons        = !empty($_POST['qty']) ? (int)$_POST['qty'] : 0;
-    $vehicle_plate      = strtoupper(trim($_POST['vehicle_plate'] ?? 'TBA'));
+    $vehicle_plate      = strtoupper(trim($_POST['vehicle_plate'] ?? ''));
     $delivery_date_raw  = $_POST['delivery_date'] ?? date('d/m/Y');
     $delivery_date      = convertDate($delivery_date_raw);
 
     if (empty($school_id) || empty($inventory_batch_id) || $qty_cartons <= 0) {
         throw new Exception("Parameter input tidak lengkap atau tidak sah (School, Batch, atau Kuantiti kosong).");
+    }
+
+    if (empty($vehicle_plate) || $vehicle_plate === 'TBA') {
+        throw new Exception("No. Plat Kenderaan (Vehicle Plate) wajib diisi dan tidak boleh 'TBA'.");
     }
 
     // 1. Dapatkan maklumat Sekolah (kod sekolah)

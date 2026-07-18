@@ -3,16 +3,15 @@
 // Pindah stok antara lokasi: Warehouse → Buffer → Shop → Damaged
 // MMS Warehouse System | Moo Moo Supplies
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
 // Sekatan akses: Admin & Staff sahaja
 $role = $_SESSION['role'] ?? '';
-$is_staff = ($role === 'admin' || $role === 'staff');
-// Note: 'admin' role covers this, check header.php
-// Allow any logged-in user to view; restrict saving to admin/staff
-$can_edit = ($role === 'admin' || $role === 'staff');
+$is_staff = is_staff_role($role);
+$can_edit = check_write_permission('stock_transfer.php');
 
 // --- FILTER ---
 $filter_location = $_GET['from_location'] ?? 'Warehouse';

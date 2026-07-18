@@ -1,6 +1,7 @@
 <?php
 // receiving_multi.php
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
@@ -98,8 +99,8 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="section-header mt-4">3. Inbound Item List</div>
-                    <div class="table-responsive responsive-table-cards">
-                        <table class="table align-middle" style="min-width: 1050px;">
+                    <div class="table-scroll-x table-responsive">
+                        <table class="table align-middle" style="min-width: 900px;">
                             <thead class="table-light">
                                 <tr class="small fw-800 text-uppercase">
                                     <th class="ps-3" style="min-width: 250px;">Product Description</th>

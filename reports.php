@@ -1,8 +1,17 @@
 <?php
 // reports.php - FULL UPGRADED INTERFACE FOR MOO MOO SUPPLIES
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
 
 // --- 1. DATA PREPARATION FOR SEARCH ---
 // Ambil senarai semua produk untuk dropdown/datalist carian
@@ -85,9 +94,6 @@ $sql_pallets = "SELECT SUM(pallet_qty_loscam_red) as red, SUM(pallet_qty_ffm_ora
                 SUM(pallet_qty_plain_wood) as plain,
                 SUM(pallet_qty_plastic_black) as black FROM inbound_logs";
 $pallet_totals = $pdo->query($sql_pallets)->fetch();
-?>
-
-<?php
 $page_title = 'Warehouse Monitor | Moo Moo Supplies';
 require_once 'includes/header.php';
 ?>

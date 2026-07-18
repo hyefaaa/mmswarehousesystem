@@ -3,14 +3,15 @@
 // Updated: Corporate Theme for Moo Moo Supplies
 // Logic: Strictly preserved original batch selection and calculation
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'config/db.php';
 
 try {
     $batches = $pdo->query("
-        SELECT b.id, b.batch_no, b.qty_on_hand, p.name as product_name, p.pack_size
+        SELECT b.id, b.batch_no, b.qty_on_hand, b.expiry_date, p.name as product_name, p.pack_size
         FROM inventory_batches b
         JOIN products p ON b.product_id = p.id
         WHERE b.qty_on_hand > 0
@@ -19,7 +20,6 @@ try {
 } catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());
 }
-
 
 $page_title = 'MMS | Damage & Spoilage Report';
 require_once 'includes/header.php';
@@ -117,10 +117,10 @@ require_once 'includes/header.php';
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="fw-800 mb-1"><i class="bi bi-exclamation-octagon-fill me-2"></i>Damage & Spoilage Report</h1>
-                <p class="opacity-75 mb-0 fw-light">Laporan kerosakan produk dan pelarasan baki stok automatik</p>
+                <h1 class="fw-800 mb-1"><i class="bi bi-exclamation-octagon-fill me-2"></i><span data-lang="nav_spoilage_report">Damage & Spoilage Report</span></h1>
+                <p class="opacity-75 mb-0 fw-light" data-lang="spoil_subtitle">Laporan kerosakan produk dan pelarasan baki stok automatik</p>
             </div>
-            <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
+            <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
         </div>
     </div>
 </div>
@@ -128,29 +128,28 @@ require_once 'includes/header.php';
 <div class="container-fluid px-4 pb-5">
     <form id="spoilageForm" action="api/save_spoilage.php" method="POST" enctype="multipart/form-data" class="card main-card border-0">
         
-        <div class="section-title"><i class="bi-info-circle-fill bi"></i> 1. MAKLUMAT LAPORAN</div>
-        <div class="card-body bg-white p-0 mb-4">
-                <div class="row g-4">
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Tarikh Penemuan</label>
-                        <input type="date" name="report_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label small fw-bold">Ulasan Umum</label>
-                        <input type="text" name="remarks" class="form-control" placeholder="Sila nyatakan punca (Contoh: Kerosakan Transit)">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold text-primary"><i class="fas fa-camera me-1"></i> Muat Naik Bukti</label>
-                        <input type="file" name="spoilage_photos[]" id="photo_input" class="form-control" accept="image/*" capture="environment" multiple>
-                        <div id="preview_container" class="d-flex flex-wrap gap-2 mt-2"></div>
-                    </div>
+        <div class="section-title"><i class="bi-info-circle-fill bi"></i> <span data-lang="spoil_sec_report_info">1. MAKLUMAT LAPORAN</span></div>
+        <div class="card-body bg-white p-4 mb-4 rounded shadow-sm border">
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold" data-lang="spoil_lbl_date_discovery">Tarikh Penemuan</label>
+                    <input type="date" name="report_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold" data-lang="spoil_lbl_general_remarks">Ulasan Umum</label>
+                    <input type="text" name="remarks" class="form-control" placeholder="Sila nyatakan punca (Contoh: Kerosakan Transit)" data-lang-placeholder="spoil_placeholder_remarks">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-primary"><i class="fas fa-camera me-1"></i> <span data-lang="spoil_lbl_upload_evidence">Muat Naik Bukti</span></label>
+                    <input type="file" name="spoilage_photos[]" id="photo_input" class="form-control" accept="image/*" capture="environment" multiple>
+                    <div id="preview_container" class="d-flex flex-wrap gap-2 mt-2"></div>
                 </div>
             </div>
         </div>
 
         <div class="card shadow-sm border-0">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <span>2. SENARAI ITEM & KUANTITI</span>
+                <span data-lang="spoil_sec_items">2. SENARAI ITEM & KUANTITI</span>
                 <span class="badge bg-secondary font-monospace">Auto-Pcs Conversion</span>
             </div>
             <div class="card-body p-0">
@@ -158,23 +157,31 @@ require_once 'includes/header.php';
                     <table class="table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th class="ps-4" width="40%">Batch Produk</th>
-                                <th width="25%">Kuantiti (Pcs/Ctn)</th>
-                                <th width="25%">Sebab Kerosakan</th>
-                                <th width="10%" class="text-center">Aksi</th>
+                                <th class="ps-4" width="40%" data-lang="spoil_col_product_batch">Batch Produk</th>
+                                <th width="25%" data-lang="spoil_col_qty">Kuantiti (Pcs/Ctn)</th>
+                                <th width="25%" data-lang="spoil_col_reason">Sebab Kerosakan</th>
+                                <th width="10%" class="text-center" data-lang="lbl_action">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="spoilageBody">
                             <tr>
                                 <td class="p-4">
                                     <select name="items[0][batch_id]" class="form-select batch-select shadow-sm" required onchange="calculateRow(this)">
-                                        <option value="" data-pcs="1">-- Pilih Batch --</option>
+                                        <option value="" data-pcs="1" data-lang="spoil_select_batch_placeholder">-- Pilih Batch --</option>
                                         <?php foreach($batches as $b): ?>
-                                            <option value="<?= $b['id'] ?>" data-pcs="<?= $b['pack_size'] ?>">
+                                            <option value="<?= $b['id'] ?>" data-pcs="<?= $b['pack_size'] ?>" data-expiry="<?= $b['expiry_date'] ?>" data-batch="<?= htmlspecialchars($b['batch_no']) ?>">
                                                 <?= htmlspecialchars($b['product_name']) ?> (B: <?= $b['batch_no'] ?> | Stok: <?= $b['qty_on_hand'] ?>)
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <div class="batch-info-box mt-2 d-none" style="font-size: 0.8rem;">
+                                        <span class="badge bg-light text-dark border me-1 py-2 px-3" style="font-size: 0.76rem; font-weight: 600;">
+                                            <i class="far fa-calendar-alt text-danger me-1"></i>Expiry: <span class="expiry-date-text">-</span>
+                                        </span>
+                                        <span class="badge bg-light text-dark border py-2 px-3" style="font-size: 0.76rem; font-weight: 600;">
+                                            <i class="fas fa-barcode text-primary me-1"></i>Batch: <span class="batch-no-text">-</span>
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="p-4">
                                     <div class="input-group shadow-sm">
@@ -197,8 +204,7 @@ require_once 'includes/header.php';
                                         <option value="Pest Damage">Pest Damage</option>
                                     </select>
                                 </td>
-                                <td class="text-center p-4">
-                                    </td>
+                                <td class="text-center p-4"></td>
                             </tr>
                         </tbody>
                     </table>
@@ -206,14 +212,14 @@ require_once 'includes/header.php';
             </div>
             <div class="card-footer bg-white border-0 py-3">
                 <button type="button" class="btn btn-sm btn-outline-dark px-3" onclick="addRow()">
-                    <i class="fas fa-plus me-1"></i> Tambah Item
+                    <i class="fas fa-plus me-1"></i> <span data-lang="spoil_btn_add_item">Tambah Item</span>
                 </button>
             </div>
         </div>
 
         <div class="mt-4 mb-5">
             <button type="submit" class="btn btn-mms-danger btn-lg w-100 py-3 shadow">
-                <i class="fas fa-check-double me-2"></i>SAHKAN & TOLAK STOK
+                <i class="fas fa-check-double me-2"></i><span data-lang="spoil_btn_submit">SAHKAN & TOLAK STOK</span>
             </button>
         </div>
     </form>
@@ -221,18 +227,55 @@ require_once 'includes/header.php';
 
 <script>
     let rowCount = 1;
-    const batchOptions = `<?php 
-        $opt = '<option value="" data-pcs="1">-- Pilih Batch --</option>';
+    const selectPlaceholderText = typeof MMS_LANG !== 'undefined' ? MMS_LANG.t('spoil_select_batch_placeholder') : "-- Pilih Batch --";
+    const batchOptions = `<option value="" data-pcs="1">${selectPlaceholderText}</option><?php 
+        $opt = '';
         foreach($batches as $b) {
-            $opt .= '<option value="'.$b['id'].'" data-pcs="'.$b['pack_size'].'">'.htmlspecialchars($b['product_name']).' (B: '.$b['batch_no'].' | Stok: '.$b['qty_on_hand'].')</option>';
+            $opt .= '<option value="'.$b['id'].'" data-pcs="'.$b['pack_size'].'" data-expiry="'.$b['expiry_date'].'" data-batch="'.htmlspecialchars($b['batch_no']).'">'.htmlspecialchars($b['product_name']).' (B: '.$b['batch_no'].' | Stok: '.$b['qty_on_hand'].')</option>';
         }
         echo $opt;
     ?>`;
 
+    $(document).ready(function() {
+        const selectPlaceholder = typeof MMS_LANG !== 'undefined' ? MMS_LANG.t('spoil_select_batch_placeholder') : "-- Pilih Batch --";
+        $('.batch-select').select2({
+            placeholder: selectPlaceholder,
+            width: '100%'
+        });
+    });
+
     function calculateRow(el) {
         const row = el.closest('tr');
         const batch = row.querySelector('.batch-select');
-        const pcsPerCtn = parseInt(batch.options[batch.selectedIndex].dataset.pcs) || 1;
+        const selectedOpt = batch.options[batch.selectedIndex];
+        
+        // Handle Expiry Date & Batch display
+        const infoBox = row.querySelector('.batch-info-box');
+        if (infoBox) {
+            const expiry = selectedOpt ? selectedOpt.dataset.expiry : '';
+            const batchNo = selectedOpt ? selectedOpt.dataset.batch : '';
+            if (expiry || batchNo) {
+                let formattedDate = expiry || 'No Expiry';
+                if (expiry && expiry !== '0000-00-00') {
+                    try {
+                        const d = new Date(expiry);
+                        if (!isNaN(d.getTime())) {
+                            const day = String(d.getDate()).padStart(2, '0');
+                            const month = String(d.getMonth() + 1).padStart(2, '0');
+                            const year = d.getFullYear();
+                            formattedDate = `${day}/${month}/${year}`;
+                        }
+                    } catch (e) {}
+                }
+                infoBox.querySelector('.expiry-date-text').innerText = formattedDate;
+                infoBox.querySelector('.batch-no-text').innerText = batchNo || 'N/A';
+                infoBox.classList.remove('d-none');
+            } else {
+                infoBox.classList.add('d-none');
+            }
+        }
+        
+        const pcsPerCtn = parseInt(selectedOpt ? selectedOpt.dataset.pcs : 1) || 1;
         const val = parseFloat(row.querySelector('.qty-input').value) || 0;
         const type = row.querySelector('.unit-type').value;
         const display = row.querySelector('.calc-box');
@@ -246,12 +289,21 @@ require_once 'includes/header.php';
 
     function addRow() {
         const tbody = document.getElementById('spoilageBody');
+        const selectPlaceholder = typeof MMS_LANG !== 'undefined' ? MMS_LANG.t('spoil_select_batch_placeholder') : "-- Pilih Batch --";
         const html = `
             <tr class="border-top">
                 <td class="p-4">
                     <select name="items[${rowCount}][batch_id]" class="form-select batch-select" required onchange="calculateRow(this)">
                         ${batchOptions}
                     </select>
+                    <div class="batch-info-box mt-2 d-none" style="font-size: 0.8rem;">
+                        <span class="badge bg-light text-dark border me-1 py-2 px-3" style="font-size: 0.76rem; font-weight: 600;">
+                            <i class="far fa-calendar-alt text-danger me-1"></i>Expiry: <span class="expiry-date-text">-</span>
+                        </span>
+                        <span class="badge bg-light text-dark border py-2 px-3" style="font-size: 0.76rem; font-weight: 600;">
+                            <i class="fas fa-barcode text-primary me-1"></i>Batch: <span class="batch-no-text">-</span>
+                        </span>
+                    </div>
                 </td>
                 <td class="p-4">
                     <div class="input-group">
@@ -279,6 +331,10 @@ require_once 'includes/header.php';
                 </td>
             </tr>`;
         tbody.insertAdjacentHTML('beforeend', html);
+        $(`select[name="items[${rowCount}][batch_id]"]`).select2({
+            placeholder: selectPlaceholder,
+            width: '100%'
+        });
         rowCount++;
     }
 

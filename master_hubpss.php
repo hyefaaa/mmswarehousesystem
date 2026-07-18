@@ -1,6 +1,7 @@
 <?php
 // master_hubpss.php - Premium Integrated PSS Logistics Dashboard (Old System Restored)
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'config/db.php';
@@ -391,7 +392,7 @@ require_once 'includes/header.php';
     </div>
 
     <!-- Analytics per-dealer table (admin/staff only) -->
-    <?php if ($role === 'admin' || $role === 'staff'): ?>
+    <?php if (is_staff_role($role)): ?>
     <div class="analytics-card no-print">
         <h5 class="fw-bold"><i class="bi bi-bar-chart-line-fill me-2"></i><span data-lang="pss_hub_analytics_title">Analytics — Kemajuan per Dealer / HD</span></h5>
         <div class="table-wrapper">
@@ -429,7 +430,7 @@ require_once 'includes/header.php';
     <?php endif; ?>
 
     <!-- Admin Setup Tools -->
-    <?php if ($role === 'admin' || $role === 'staff'): ?>
+    <?php if (is_staff_role($role)): ?>
     <div id="adminArea" class="setup-grid no-print">
         <h5 class="fw-bold text-primary mb-3"><i class="bi bi-sliders me-2"></i><span data-lang="pss_hub_admin_tools">Alatan Admin & Pengurusan PSS</span></h5>
         <div class="row g-3">
@@ -644,7 +645,7 @@ require_once 'includes/header.php';
         const sx = document.getElementById('adminDistrictFilter').value;
         const sc = document.getElementById('adminCoFilter').value;
 
-        if (currentRole === 'admin' || currentRole === 'staff') {
+        if (['admin', 'staff', 'staff_jomcha', 'intern', 'pss_admin'].includes(currentRole.toLowerCase())) {
             if (sd && sd !== 'all') fD = fD.filter(x => x.dealer === sd);
         } else {
             fD = fD.filter(x => x.dealer && x.dealer.toLowerCase() === currentDealer.toLowerCase());
@@ -946,7 +947,7 @@ require_once 'includes/header.php';
                     <span class="badge bg-secondary font-monospace" style="min-width:60px;">${v.owner}</span>
                     <input type="text" class="form-control form-control-sm v-name" value="${v.v_name}" style="flex:1;">
                     <input type="number" class="form-control form-control-sm v-cap" value="${v.v_capacity}" style="width:90px;" placeholder="${capPlaceholder}">
-                    <button onclick="this.parentElement.remove()" class="btn btn-outline-danger btn-sm p-1.5 border-0"><i class="bi bi-trash"></i></button>
+                    <button onclick="deleteVehicleRow(this)" class="btn btn-outline-danger btn-sm p-1.5 border-0"><i class="bi bi-trash"></i></button>
                 </div>`;
 
                 chk.innerHTML += `
@@ -967,11 +968,23 @@ require_once 'includes/header.php';
             <span class="badge bg-secondary font-monospace" style="min-width:60px;">${currentDealer}</span>
             <input type="text" class="form-control form-control-sm v-name" placeholder="${namePlaceholder}" style="flex:1;">
             <input type="number" class="form-control form-control-sm v-cap" placeholder="${capPlaceholder}" style="width:90px;">
-            <button onclick="this.parentElement.remove()" class="btn btn-outline-danger btn-sm p-1.5 border-0"><i class="bi bi-trash"></i></button>
+            <button onclick="deleteVehicleRow(this)" class="btn btn-outline-danger btn-sm p-1.5 border-0"><i class="bi bi-trash"></i></button>
         </div>`;
     }
 
-    async function saveVehicles() {
+    async function deleteVehicleRow(btn) {
+        const isMs = typeof MMS_LANG !== 'undefined' && MMS_LANG.current() === 'ms';
+        // Only auto-save if the row has data (already saved vehicle), not blank new rows
+        const nameInput = btn.parentElement.querySelector('.v-name');
+        const hasName = nameInput && nameInput.value.trim() !== '';
+        btn.parentElement.remove();
+        if (hasName) {
+            // Auto-save to DB immediately after removing saved vehicle
+            await saveVehicles(true); // true = silent mode (no reload prompt)
+        }
+    }
+
+    async function saveVehicles(silent = false) {
         const isMs = typeof MMS_LANG !== 'undefined' && MMS_LANG.current() === 'ms';
         const rows = document.querySelectorAll('.v-row');
         const data = Array.from(rows).map(r => ({
@@ -981,15 +994,24 @@ require_once 'includes/header.php';
         })).filter(v => v.v_name !== "");
 
         try {
-            await fetch('api_pss.php?action=save_vehicles_global', {
+            const resp = await fetch('api_pss.php?action=save_vehicles_global', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
+                body: JSON.stringify({owner: currentDealer, vehicles: data})
             });
-            showToast(isMs ? "Senarai kenderaan disimpan!" : "Vehicle list saved!");
+            const result = await resp.json();
+            if (!resp.ok || result.error) {
+                showToast(isMs ? '⚠️ Gagal menyimpan kenderaan.' : '⚠️ Failed to save vehicles.');
+                return;
+            }
+            if (!silent) {
+                showToast(isMs ? "✅ Senarai kenderaan disimpan!" : "✅ Vehicle list saved!");
+            } else {
+                showToast(isMs ? "🗑️ Kenderaan dipadam." : "🗑️ Vehicle removed.");
+            }
             await loadVehicles();
         } catch (e) {
-            showToast(isMs ? "Gagal menyimpan senarai kenderaan." : "Failed to save vehicle list.");
+            showToast(isMs ? "⚠️ Gagal menyimpan senarai kenderaan." : "⚠️ Failed to save vehicle list.");
         }
     }
 

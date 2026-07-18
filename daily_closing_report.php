@@ -2,7 +2,8 @@
 // daily_closing_report.php - Daily Closing Stock Take Audit
 // MMS Warehouse System | Moo Moo Supplies
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once 'config/db.php';
 
@@ -11,7 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $role = $_SESSION['role'] ?? '';
-$is_staff = ($role === 'admin' || $role === 'staff');
+$is_staff = is_staff_role($role);
 
 if (!$is_staff) {
     header('Location: login.php');
@@ -221,7 +222,7 @@ require_once 'includes/header.php';
                 <div class="col-md-6 col-6 text-end pt-4 no-print">
                     <?php if (!$existing_report): ?>
                         <button type="submit" class="btn btn-success btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-shield-lock-fill me-1"></i> SAVE & LOCK CLOSING</button>
-                    <?php else: ?>
+                    <?php elseif ($role === 'admin'): ?>
                         <button type="button" class="btn btn-outline-danger fw-bold" onclick="unlockReport()"><i class="bi bi-unlock-fill me-1"></i> Unlock/Edit (Admin)</button>
                     <?php endif; ?>
                 </div>
@@ -328,33 +329,26 @@ require_once 'includes/header.php';
     }
 
     function unlockReport() {
-        const password = prompt("Masukkan kata laluan Admin untuk membuka semula rekod closing ini:");
-        if (password === null) return;
-        
-        if (password === 'admin' || password === 'mms123') {
-            const date = '<?= $selected_date ?>';
-            if (confirm("Adakah anda pasti mahu memadam rekod closing harian ini untuk pengisian semula?")) {
-                const f = document.createElement('form');
-                f.method = 'POST';
-                f.action = 'api/save_daily_closing.php';
-                
-                const act = document.createElement('input');
-                act.type = 'hidden';
-                act.name = 'action';
-                act.value = 'unlock';
-                f.appendChild(act);
-                
-                const dt = document.createElement('input');
-                dt.type = 'hidden';
-                dt.name = 'audit_date';
-                dt.value = date;
-                f.appendChild(dt);
-                
-                document.body.appendChild(f);
-                f.submit();
-            }
-        } else {
-            alert("Kata laluan salah!");
+        const date = '<?= $selected_date ?>';
+        if (confirm("Adakah anda pasti mahu memadam rekod closing harian ini untuk pengisian semula?")) {
+            const f = document.createElement('form');
+            f.method = 'POST';
+            f.action = 'api/save_daily_closing.php';
+            
+            const act = document.createElement('input');
+            act.type = 'hidden';
+            act.name = 'action';
+            act.value = 'unlock';
+            f.appendChild(act);
+            
+            const dt = document.createElement('input');
+            dt.type = 'hidden';
+            dt.name = 'audit_date';
+            dt.value = date;
+            f.appendChild(dt);
+            
+            document.body.appendChild(f);
+            f.submit();
         }
     }
 </script>

@@ -2,9 +2,18 @@
 // api/update_hd_names.php
 // Updates HD Names in Database from CSV File
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once '../config/db.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (($_SESSION['role'] ?? '') !== 'admin') {
+    http_response_code(403);
+    die("Akses dinafikan. Hanya admin dibenarkan.");
+}
 
 // Path to your uploaded CSV file (You might need to upload it first via import_schools.php or place it manually)
 // For this script, let's assume you upload it via a form or it's in a known location.

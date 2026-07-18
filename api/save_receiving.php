@@ -1,14 +1,23 @@
 <?php
 // api/save_receiving.php
-// UPDATED: Handling New Pallet Options
+// UPDATED: Added auth checks and mapped short pallet codes to descriptive names.
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 if (!file_exists('../config/db.php')) {
     die("❌ Configuration File Not Found.");
 }
 require_once '../config/db.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['user_id']) || !is_staff_role($_SESSION['role'] ?? '')) {
+    http_response_code(403);
+    die(json_encode(['error' => 'Akses dinafikan. Hanya staf dibenarkan.']));
+}
 
 function convertDate($dateStr) {
     if (empty($dateStr)) return null;
@@ -24,9 +33,19 @@ $expiry_raw = $_POST['expiry_date'] ?? null;
 $expiry_date = convertDate($expiry_raw);
 $qty = $_POST['qty'] ?? 0;
 $pallet_id_tag = $_POST['pallet_id_tag'] ?? '';
-$pallet_type = $_POST['pallet_type'] ?? 'No Pallet';
+$pallet_type_raw = $_POST['pallet_type'] ?? 'none';
 $temp_truck = $_POST['temp_truck'] ?? 0;
 $temp_stock = $_POST['temp_stock'] ?? 0;
+
+$pallet_map = [
+    'loscam_red' => 'Loscam Red',
+    'lhp_green' => 'LHP Green',
+    'ffm_orange' => 'FFM Orange',
+    'ffm_green' => 'FFM Green',
+    'plain_wood' => 'Plain Wood',
+    'plastic_black' => 'Plastic Black'
+];
+$pallet_type = $pallet_map[strtolower($pallet_type_raw)] ?? 'No Pallet';
 
 if ($qty <= 0 || empty($product_id)) {
     die("Error: Invalid Quantity or Product ID.");
@@ -42,18 +61,10 @@ try {
     $qty_ffm_green = ($pallet_type == 'FFM Green') ? 1 : 0;
     $qty_black = ($pallet_type == 'Plastic Black') ? 1 : 0;
     
-    // NOTE: Need to ensure database has columns for new pallet types if strictly tracking them separately in log
-    // Or map them to generic 'green'/'orange' buckets. 
-    // Assuming DB has: pallet_qty_loscam_red, pallet_qty_ffm_orange, pallet_qty_plastic_black
-    // If not, update table structure or map appropriately.
-    // For now, mapping broadly:
-    
     $stmt = $pdo->prepare("INSERT INTO inbound_logs 
         (category, received_date, temp_truck, temp_stock, pallet_qty_loscam_red, pallet_qty_ffm_orange, pallet_qty_plastic_black) 
         VALUES (?, NOW(), ?, ?, ?, ?, ?)");
     
-    // Mapping: LHP Green & FFM Green -> Grouped? Or just ignore others? 
-    // Assuming standard tracking:
     $stmt->execute([$category, $temp_truck, $temp_stock, $qty_red, $qty_ffm_orange, $qty_black]);
     
     $inbound_id = $pdo->lastInsertId();

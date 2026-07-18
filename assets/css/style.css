@@ -72,7 +72,9 @@ body {
     }
 }
 
-/* Modern Glassmorphic Navbar */
+/* ===================================================
+   MODERN GLASSMORPHIC NAVBAR
+   =================================================== */
 .mms-navbar {
     background: rgba(15, 23, 42, 0.92) !important;
     backdrop-filter: blur(14px);
@@ -126,7 +128,9 @@ body {
     color: var(--mms-indigo);
 }
 
-/* Premium Layout Elements */
+/* ===================================================
+   PREMIUM LAYOUT ELEMENTS
+   =================================================== */
 .page-header {
     background: var(--gradient-primary);
     padding: 3rem 0 5.5rem 0;
@@ -227,6 +231,7 @@ body {
     border-radius: var(--border-radius-lg);
     overflow-x: auto;
     border: 1px solid rgba(241, 245, 249, 0.9);
+    -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -278,7 +283,21 @@ body {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive Grid / Breakpoints Rules */
+/* Vehicle row in PSS Hub */
+.v-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+/* ===================================================
+   RESPONSIVE BREAKPOINTS
+   =================================================== */
 
 /* --- TABLET BREAKPOINT (991px & Down) --- */
 @media (max-width: 991px) {
@@ -299,27 +318,67 @@ body {
     .stat-card {
         padding: 1.3rem !important;
     }
+
+    /* Navbar collapse menu styling on mobile */
+    .mms-navbar .navbar-collapse {
+        background: rgba(15, 23, 42, 0.97);
+        border-radius: var(--border-radius-xl);
+        margin-top: 8px;
+        padding: 12px;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .mms-navbar .dropdown-menu {
+        background: rgba(30, 41, 59, 0.95);
+        border: none;
+        box-shadow: none;
+        padding: 4px 0 4px 12px;
+    }
+
+    .mms-navbar .dropdown-item {
+        color: rgba(241, 245, 249, 0.75) !important;
+    }
+
+    .mms-navbar .dropdown-item:hover {
+        background: rgba(255,255,255,0.07);
+        color: #fff !important;
+    }
+
+    /* Language buttons shrink on tablet */
+    #lang-btn-en, #lang-btn-ms {
+        font-size: 0.7rem !important;
+        padding: 2px 7px !important;
+    }
 }
 
 /* --- MOBILE BREAKPOINT (767px & Down) --- */
 @media (max-width: 767px) {
     body {
-        padding-bottom: 90px; /* Space for mobile floating buttons */
+        padding-bottom: 90px;
     }
     
     .page-header {
-        padding: 2rem 0 3.5rem 0;
+        padding: 1.8rem 0 3rem 0;
         text-align: center !important;
     }
     
     .page-header .d-flex {
         flex-direction: column !important;
+        align-items: center !important;
         gap: 12px;
+    }
+
+    .page-header h1 {
+        font-size: 1.3rem !important;
+    }
+
+    .page-header p {
+        font-size: 0.82rem !important;
     }
     
     .main-card {
-        margin-top: -2rem;
-        padding: 1.2rem;
+        margin-top: -1.5rem;
+        padding: 1.1rem;
         border-radius: 12px;
     }
     
@@ -327,15 +386,22 @@ body {
         font-size: 0.78rem;
         margin-bottom: 1.2rem;
     }
+
+    /* Stat cards - 2 per row on mobile */
+    .stat-card {
+        padding: 1rem !important;
+    }
+
+    .stat-card .fs-1 { font-size: 1.8rem !important; }
     
-    /* Make tables fully horizontal scrollable without squishing content */
+    /* Make tables fully horizontal scrollable */
     .table-responsive {
         border: 1px solid #e2e8f0;
         margin-bottom: 1rem;
     }
     
     .table thead th, .table tbody td {
-        padding: 12px 10px;
+        padding: 10px 8px;
         font-size: 0.8rem;
     }
     
@@ -372,6 +438,53 @@ body {
         border-radius: var(--border-radius-lg);
         overflow: hidden;
         box-shadow: var(--card-shadow);
+    }
+
+    /* Vehicle rows in PSS Hub */
+    .v-row {
+        flex-wrap: wrap;
+    }
+    .v-row .v-name { min-width: 0; flex: 1 1 120px; }
+    .v-row .v-cap  { width: 80px !important; }
+
+    /* Modal dialog full-width on mobile */
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    .modal-content {
+        border-radius: 16px;
+    }
+
+    /* PSS/Hub screen trip loading layout */
+    #activeVehicleChecklist {
+        flex-direction: column !important;
+    }
+    #activeVehicleChecklist label {
+        width: 100%;
+        justify-content: flex-start !important;
+    }
+
+    /* Fix overflow in reconcile summary cards */
+    .d-inline-block {
+        max-width: 100%;
+    }
+
+    /* Receiving multi-item table — keep horizontal scroll */
+    .table-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* stock_transfer bulk reason input */
+    input[style*="width:200px"] {
+        width: 100% !important;
+    }
+
+    /* Action btn groups stack on mobile */
+    .btn-group.gap-2 {
+        flex-wrap: wrap !important;
     }
 
     /* Responsive Table to Cards conversion */
@@ -432,9 +545,36 @@ body {
     .responsive-table-cards .select2-container {
         width: 100% !important;
     }
+
+    /* Dashboard navigation cards — 2 columns on mobile */
+    .row-cols-xl-5 > *, .row-cols-lg-4 > *, .row-cols-md-3 > * {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
 }
 
-/* Category Badge Styling */
+/* --- EXTRA SMALL MOBILE (400px & Down) --- */
+@media (max-width: 400px) {
+    .page-header h1 {
+        font-size: 1.1rem !important;
+    }
+
+    /* Single column nav cards on very small screens */
+    .row-cols-xl-5 > *, .row-cols-lg-4 > *, .row-cols-md-3 > *, .row-cols-2 > * {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .main-card {
+        padding: 0.9rem;
+    }
+
+    .btn { font-size: 0.8rem; }
+}
+
+/* ===================================================
+   CATEGORY BADGE STYLING
+   =================================================== */
 .badge-cat, .badge.badge-cat {
     background-color: var(--mms-indigo-light) !important;
     color: var(--mms-indigo) !important;

@@ -66,29 +66,35 @@ require_once 'includes/header.php';
     }
 </style>
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
-        <div>
-            <h2 class="fw-bold text-navy mb-0">Monthly Order Report</h2>
-            <p class="text-muted small uppercase mt-1">Sistem Pengurusan Batch MMS</p>
-        </div>
-        
-        <div class="d-flex gap-3 align-items-center">
-            <form method="GET" class="d-flex align-items-center m-0">
-                <select name="batch_id" onchange="this.form.submit()" class="form-select border-primary fw-bold shadow-sm" style="min-width: 250px;">
-                    <?php foreach ($batches as $b): ?>
-                        <option value="<?= $b['id'] ?>" <?= $b['id'] == $batchId ? 'selected' : '' ?>>
-                            Batch #<?= $b['id'] ?> - <?= htmlspecialchars($b['contract_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
+<div class="page-header mb-4 no-print">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
+            <div>
+                <h1 class="fw-800 mb-1"><i class="bi bi-file-earmark-spreadsheet-fill me-2 text-warning"></i>Monthly Order Report</h1>
+                <p class="opacity-75 mb-0 fw-light">Sistem Pengurusan Batch MMS - View Monthly SAP Reports</p>
+            </div>
             
-            <button onclick="window.print()" class="btn btn-primary fw-bold shadow-sm">
-                <i class="bi bi-printer me-2"></i> CETAK LAPORAN
-            </button>
+            <div class="d-flex gap-3 align-items-center">
+                <form method="GET" class="d-flex align-items-center m-0 bg-white bg-opacity-10 p-1.5 rounded-3 border border-white border-opacity-20">
+                    <select name="batch_id" onchange="this.form.submit()" class="form-select form-select-sm border-0 bg-transparent text-white fw-bold shadow-none" style="min-width: 250px; color-scheme: dark; cursor: pointer;">
+                        <?php foreach ($batches as $b): ?>
+                            <option value="<?= $b['id'] ?>" <?= $b['id'] == $batchId ? 'selected' : '' ?> class="text-dark">
+                                Batch #<?= $b['id'] ?> - <?= htmlspecialchars($b['contract_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+                
+                <button onclick="window.print()" class="btn btn-info text-white fw-bold shadow-sm">
+                    <i class="bi bi-printer me-2"></i> Cetak Laporan
+                </button>
+                <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
+            </div>
         </div>
     </div>
+</div>
+
+<div class="container-fluid px-4 pb-5">
 
     <div class="row g-4 mb-4 no-print">
         <div class="col-md-6">

@@ -2,7 +2,8 @@
 // api/save_daily_closing.php
 // Saves or deletes daily closing stock audit reports
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 require_once '../config/db.php';
 
@@ -11,7 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $role = $_SESSION['role'] ?? '';
-$is_staff = ($role === 'admin' || $role === 'staff');
+$is_staff = is_staff_role($role);
 
 if (!$is_staff) {
     http_response_code(403);
@@ -24,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'unlock') {
+        if ($role !== 'admin') {
+            die("Akses dinafikan untuk unlock. Hanya admin dibenarkan.");
+        }
         // Unlock action: Admin only (or checked via a simple prompt passcode in UI)
         try {
             $stmtDel = $pdo->prepare("DELETE FROM daily_closing_reports WHERE audit_date = ?");

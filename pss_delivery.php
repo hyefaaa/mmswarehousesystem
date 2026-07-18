@@ -1,6 +1,7 @@
 <?php
 // pss_delivery.php - Dealer/HD Specific School Deliveries Checklist (Old System Restored)
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'config/db.php';
@@ -15,7 +16,11 @@ $full_name = $_SESSION['full_name'] ?? 'Pengguna';
 
 // Switch DB context to read initial stats
 try {
-    $pdo->exec("USE susumura_mms_logistik");
+    try {
+        $pdo->exec("USE susumura_mms_logistik");
+    } catch (PDOException $e) {
+        error_log("USE susumura_mms_logistik failed in pss_delivery, falling back to main database: " . $e->getMessage());
+    }
 
     // Fetch distinct CO list for the filter dropdown (latest first)
     $co_list = $pdo->query("SELECT DISTINCT co_no FROM mms_logistik ORDER BY co_no DESC")->fetchAll(PDO::FETCH_COLUMN);
