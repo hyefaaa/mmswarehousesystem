@@ -33,6 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtDel = $pdo->prepare("DELETE FROM daily_closing_reports WHERE audit_date = ?");
             $stmtDel->execute([$audit_date]);
             
+            if (function_exists('log_system_activity')) {
+                $username = $_SESSION['username'] ?? 'admin';
+                log_system_activity("Unlocked Daily Closing", "daily_closing_reports", null, "$username telah membatalkan/unlock laporan closing untuk tarikh $audit_date");
+            }
+            
             header("Location: ../daily_closing_report.php?date=" . urlencode($audit_date) . "&msg=unlocked");
             exit;
         } catch (Exception $e) {
@@ -83,6 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
+        
+        if (function_exists('log_system_activity')) {
+            $username = $_SESSION['username'] ?? 'system';
+            log_system_activity("Completed Daily Closing", "daily_closing_reports", $report_id, "$username update daily closing stock untuk tarikh $audit_date (Pemeriksa: $checked_by)");
+        }
+
         header("Location: ../daily_closing_report.php?date=" . urlencode($audit_date) . "&msg=saved");
         exit;
 
