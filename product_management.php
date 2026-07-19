@@ -59,7 +59,11 @@ if (isset($_GET['toggle_id'])) {
     }
     $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = ?");
     $stmt->execute([$_GET['toggle_id']]);
-    header("Location: product_management.php");
+    
+    $q = $_GET;
+    unset($q['toggle_id']);
+    $qs = http_build_query($q);
+    header("Location: product_management.php" . ($qs ? "?" . $qs : ""));
     exit;
 }
 
@@ -233,7 +237,7 @@ require_once 'includes/header.php';
 <!-- Edit Product Modal -->
 <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="POST" action="product_management.php">
+        <form method="POST" action="">
             <input type="hidden" name="action" value="edit_product">
             <input type="hidden" name="id" id="edit-id">
             <div class="modal-content">
@@ -288,7 +292,7 @@ require_once 'includes/header.php';
 <!-- Add Product Modal -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="POST" action="product_management.php">
+        <form method="POST" action="">
             <input type="hidden" name="action" value="add_product">
             <div class="modal-content">
                 <div class="modal-header" style="background: var(--gradient-primary); color: white;">
