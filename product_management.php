@@ -13,9 +13,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $pallet_capacity = (int)$_POST['pallet_capacity'];
     
     try {
+        // Ambil maklumat produk lama untuk perbandingan log
+        $old_stmt = $pdo->prepare("SELECT name, barcode FROM products WHERE id = ? LIMIT 1");
+        $old_stmt->execute([$product_id]);
+        $old_product = $old_stmt->fetch();
+        $product_name = $old_product['name'] ?? 'Unknown';
+        $old_barcode = $old_product['barcode'] ?? '';
+
         $stmt = $pdo->prepare("UPDATE products SET barcode = ?, qrcode = ?, category = ?, uom = ?, pack_size = ?, pallet_capacity = ? WHERE id = ?");
         $stmt->execute([$barcode, $qrcode, $category, $uom, $pack_size, $pallet_capacity, $product_id]);
         $success_msg = "Product updated successfully!";
+        
+        if (function_exists('log_system_activity')) {
+            $username = $_SESSION['username'] ?? 'system';
+            if (empty($old_barcode) && !empty($barcode)) {
+                log_system_activity("Added Barcode", "products", $product_id, "$username add barcode for product $product_name");
+            } else {
+                log_system_activity("Updated Product", "products", $product_id, "$username updated product $product_name");
+            }
+        }
     } catch (PDOException $e) {
         $error_msg = "Database error: " . $e->getMessage();
     }
@@ -43,7 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } else {
                 $stmt = $pdo->prepare("INSERT INTO products (name, barcode, qrcode, category, uom, pack_size, pallet_capacity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
                 $stmt->execute([$name, $barcode, $qrcode, $category, $uom, $pack_size, $pallet_capacity]);
+                $new_id = $pdo->lastInsertId();
                 $success_msg = "Product created successfully!";
+                
+                if (function_exists('log_system_activity')) {
+                    $username = $_SESSION['username'] ?? 'system';
+                    log_system_activity("Created Product", "products", $new_id, "$username add new product $name");
+                }
             }
         } catch (PDOException $e) {
             $error_msg = "Database error: " . $e->getMessage();
@@ -57,8 +79,21 @@ if (isset($_GET['toggle_id'])) {
         header("Location: product_management.php?error=no_permission");
         exit;
     }
+    
+    // Dapatkan nama produk dan status asal untuk catatan log
+    $p_stmt = $pdo->prepare("SELECT name, is_active FROM products WHERE id = ? LIMIT 1");
+    $p_stmt->execute([$_GET['toggle_id']]);
+    $p = $p_stmt->fetch();
+    $p_name = $p['name'] ?? 'Unknown';
+    $p_action = $p['is_active'] ? 'deactivate' : 'activate';
+
     $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = ?");
     $stmt->execute([$_GET['toggle_id']]);
+    
+    if (function_exists('log_system_activity')) {
+        $username = $_SESSION['username'] ?? 'system';
+        log_system_activity("Toggled Product Status", "products", $_GET['toggle_id'], "$username $p_action product $p_name");
+    }
     
     $q = $_GET;
     unset($q['toggle_id']);
