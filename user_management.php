@@ -385,6 +385,14 @@ require_once 'includes/header.php';
                 $('#permissionsDiv').hide();
             }
         });
+
+        // Auto-check View Permission when Edit Permission is checked
+        $('.permission-cb').on('change', function() {
+            if (this.checked) {
+                const val = $(this).val();
+                $(`#view_${val}`).prop('checked', true);
+            }
+        });
     });
 
     function openAddModal() {

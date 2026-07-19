@@ -37,6 +37,8 @@ $allowed_modules_arr = isset($_POST['allowed_modules']) ? (array)$_POST['allowed
 $allowed_modules = in_array($role, ['staff', 'intern', 'pss_admin', 'staff_jomcha']) ? implode(',', array_map('trim', $allowed_modules_arr)) : null;
 
 $allowed_view_modules_arr = isset($_POST['allowed_view_modules']) ? (array)$_POST['allowed_view_modules'] : [];
+// Auto-merge edit modules into view modules to prevent view restrictions on editable content
+$allowed_view_modules_arr = array_unique(array_merge($allowed_view_modules_arr, $allowed_modules_arr));
 $allowed_view_modules = in_array($role, ['staff', 'intern', 'pss_admin', 'staff_jomcha']) ? implode(',', array_map('trim', $allowed_view_modules_arr)) : null;
 
 if (empty($username) || empty($full_name) || empty($role)) {
