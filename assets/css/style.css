@@ -2,12 +2,12 @@
 /* Premium Design System & Responsive Rules for MMS Hub */
 
 :root {
-    --mms-navy: #0f172a;
-    --mms-navy-light: #1e293b;
-    --mms-cyan: #06b6d4;
-    --mms-cyan-light: #ecfeff;
-    --mms-indigo: #6366f1;
-    --mms-indigo-light: #e0e7ff;
+    --mms-navy: #042a4f;
+    --mms-navy-light: #0a3a6b;
+    --mms-cyan: #269ad6;
+    --mms-cyan-light: #e0f4ff;
+    --mms-indigo: #1b7bb1;
+    --mms-indigo-light: #d1ecf9;
     --mms-violet: #8b5cf6;
     --mms-bg: #f8fafc;
     --mms-card-bg: #ffffff;
@@ -15,15 +15,15 @@
     --mms-text-muted: #64748b;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    --gradient-accent: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+    --gradient-primary: linear-gradient(135deg, #042a4f 0%, #0a3a6b 100%);
+    --gradient-accent: linear-gradient(135deg, #269ad6 0%, #042a4f 100%);
     --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
     --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     
     /* Shadows & Transitions */
-    --card-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.04), 0 8px 15px -6px rgba(15, 23, 42, 0.03);
-    --hover-shadow: 0 20px 40px -5px rgba(99, 102, 241, 0.08), 0 12px 20px -6px rgba(99, 102, 241, 0.05);
+    --card-shadow: 0 10px 30px -5px rgba(4, 42, 79, 0.04), 0 8px 15px -6px rgba(4, 42, 79, 0.03);
+    --hover-shadow: 0 20px 40px -5px rgba(38, 154, 214, 0.15), 0 12px 20px -6px rgba(38, 154, 214, 0.1);
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     
     --border-radius-xl: 18px;
