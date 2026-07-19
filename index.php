@@ -361,15 +361,15 @@ require_once 'includes/header.php';
     <div class="row g-4">
         <!-- Requisition Quick Card -->
         <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%); border: 1px solid #ddd6fe !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
+            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #a7f3d0 !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
                 <div>
                     <div class="my-4">
-                        <i class="bi bi-cart-plus-fill text-primary-emphasis" style="font-size: 4.5rem; filter: drop-shadow(0 4px 6px rgba(124, 58, 237, 0.15));"></i>
+                        <i class="bi bi-cart-plus-fill" style="font-size: 4.5rem; color: #059669; filter: drop-shadow(0 4px 6px rgba(5, 150, 105, 0.15));"></i>
                     </div>
-                    <h4 class="fw-extrabold" style="color: #3b0764; letter-spacing: -0.5px;" data-lang="jomcha_dash_card_title">Mohon Stok Gudang</h4>
+                    <h4 class="fw-extrabold" style="color: #064e3b; letter-spacing: -0.5px;" data-lang="jomcha_dash_card_title">Mohon Stok Gudang</h4>
                     <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_card_desc">Hantar permohonan bekalan karton baharu dari Warehouse utama terus ke outlet Jomcha anda.</p>
                 </div>
-                <a href="jomcha_request_stock.php" class="btn btn-primary btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); border: none; font-size:1.05rem;">
+                <a href="jomcha_request_stock.php" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%); border: none; font-size:1.05rem;">
                     <i class="bi bi-plus-lg me-2"></i> <span data-lang="jomcha_dash_card_btn">Buka Borang Permohonan</span>
                 </a>
             </div>
@@ -377,15 +377,15 @@ require_once 'includes/header.php';
 
         <!-- Stock Take Quick Card -->
         <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1px solid #e9d5ff !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
+            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0 !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
                 <div>
                     <div class="my-4">
-                        <i class="bi bi-clipboard-check text-purple" style="font-size: 4.5rem; color: #a855f7; filter: drop-shadow(0 4px 6px rgba(168, 85, 247, 0.15));"></i>
+                        <i class="bi bi-clipboard-check" style="font-size: 4.5rem; color: #16a34a; filter: drop-shadow(0 4px 6px rgba(22, 163, 74, 0.15));"></i>
                     </div>
-                    <h4 class="fw-extrabold" style="color: #3b0764; letter-spacing: -0.5px;" data-lang="jomcha_dash_st_title">Kiraan Stok Jomcha</h4>
+                    <h4 class="fw-extrabold" style="color: #14532d; letter-spacing: -0.5px;" data-lang="jomcha_dash_st_title">Kiraan Stok Jomcha</h4>
                     <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_st_desc">Kira fizikal stok kaunter & simpanan Jomcha. Auto-billing bagi perbezaan stok yang dikesan berkurang.</p>
                 </div>
-                <a href="jomcha_stock_take.php" class="btn btn-primary btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border: none; font-size:1.05rem;">
+                <a href="jomcha_stock_take.php" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); border: none; font-size:1.05rem;">
                     <i class="bi bi-calculator me-2"></i> <span data-lang="jomcha_dash_st_btn">Mula Kira Stok</span>
                 </a>
             </div>
@@ -393,15 +393,15 @@ require_once 'includes/header.php';
 
         <!-- Stock Monitor Quick Card -->
         <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0 !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
+            <div class="card stat-card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #f4fce3 0%, #e9fac8 100%); border: 1px solid #d8f5a2 !important; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease;">
                 <div>
                     <div class="my-4">
-                        <i class="bi bi-display text-success" style="font-size: 4.5rem; color: #15803d; filter: drop-shadow(0 4px 6px rgba(22, 163, 74, 0.15));"></i>
+                        <i class="bi bi-display" style="font-size: 4.5rem; color: #65a30d; filter: drop-shadow(0 4px 6px rgba(101, 163, 13, 0.15));"></i>
                     </div>
-                    <h4 class="fw-extrabold" style="color: #14532d; letter-spacing: -0.5px;" data-lang="jomcha_dash_mon_title">Pantau Stok Jomcha</h4>
+                    <h4 class="fw-extrabold" style="color: #3f6212; letter-spacing: -0.5px;" data-lang="jomcha_dash_mon_title">Pantau Stok Jomcha</h4>
                     <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_mon_desc">Pantau baki kuantiti produk mengikut sub-lokasi (JC Barn, Kedai Jomcha, Store Area) secara langsung.</p>
                 </div>
-                <a href="jomcha_monitor_stock.php" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); border: none; font-size:1.05rem;">
+                <a href="jomcha_monitor_stock.php" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #84cc16 0%, #4d7c0f 100%); border: none; font-size:1.05rem;">
                     <i class="bi bi-display me-2"></i> <span data-lang="jomcha_dash_mon_btn">Buka Pemantauan Stok</span>
                 </a>
             </div>
