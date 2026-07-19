@@ -301,11 +301,11 @@ require_once 'includes/header.php';
     }
     
     .jomcha-header {
-        background: linear-gradient(135deg, #581c87 0%, #3b0764 100%);
+        background: linear-gradient(135deg, #166534 0%, #14532d 100%);
         color: white;
         padding: 30px 0 25px;
-        border-bottom: 5px solid #a855f7;
-        box-shadow: 0 4px 15px rgba(88, 28, 135, 0.1);
+        border-bottom: 5px solid #22c55e;
+        box-shadow: 0 4px 15px rgba(22, 101, 52, 0.1);
     }
     
     .jomcha-card {

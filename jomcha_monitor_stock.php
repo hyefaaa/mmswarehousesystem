@@ -106,8 +106,8 @@ require_once 'includes/header.php';
     }
     
     .jomcha-header {
-        background: linear-gradient(135deg, #581c87 0%, #3b0764 100%);
-        border-bottom: 4px solid #a855f7;
+        background: linear-gradient(135deg, #166534 0%, #14532d 100%);
+        border-bottom: 4px solid #22c55e;
     }
     
     .jomcha-card {

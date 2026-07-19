@@ -139,11 +139,11 @@ require_once 'includes/header.php';
 <style>
     body { background-color: #f8fafc; }
     .page-header {
-        background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 60%, #1e1b4b 100%);
+        background: linear-gradient(135deg, #16a34a 0%, #15803d 60%, #14532d 100%);
         color: white;
         padding: 40px 0 35px;
-        border-bottom: 5px solid #8b5cf6;
-        box-shadow: 0 4px 20px rgba(109, 40, 217, 0.15);
+        border-bottom: 5px solid #22c55e;
+        box-shadow: 0 4px 20px rgba(21, 128, 61, 0.15);
     }
     .custom-card {
         background: #ffffff;
