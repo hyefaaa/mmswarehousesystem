@@ -98,7 +98,7 @@ require_once 'includes/header.php';
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
                 <button type="button" class="btn btn-success fw-bold text-white" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> Add Product</button>
-                <a href="master_import.php" class="btn btn-info text-white fw-bold"><i class="bi bi-file-earmark-arrow-up me-1"></i> Bulk Import</a>
+                <a href="import_master.php" class="btn btn-info text-white fw-bold"><i class="bi bi-file-earmark-arrow-up me-1"></i> Bulk Import</a>
             </div>
         </div>
     </div>
