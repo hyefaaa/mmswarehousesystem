@@ -393,6 +393,18 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
 <script>
 $(document).ready(function() {
+    // Clear filter state when navigating via sidebar/navbar
+    $('.navbar-nav a.nav-link, .navbar-nav a.dropdown-item, .navbar-brand').on('click', function(e) {
+        const href = $(this).attr('href');
+        if (href && href.endsWith('.php') && !href.includes('?')) {
+            e.preventDefault();
+            window.location.href = href + '?reset_filters=1';
+        } else if (href && href.includes('.php?') && !href.includes('reset_filters')) {
+            e.preventDefault();
+            window.location.href = href + '&reset_filters=1';
+        }
+    });
+
     $('#changePasswordForm').on('submit', function(e) {
         e.preventDefault();
         const alertBox = $('#changePasswordAlert');
