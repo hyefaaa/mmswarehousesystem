@@ -180,7 +180,7 @@ require_once 'includes/header.php';
                                 <th class="text-center" style="min-width: 100px;">
                                     <div class="fw-bold"><?= date('d/m', strtotime($r['audit_date'])) ?></div>
                                     <div class="text-uppercase text-warning" style="font-size: 10px; font-weight: normal;">
-                                        <?= htmlspecialchars($r['checked_by']) ?>
+                                        <?= htmlspecialchars($r['checked_by'] ?? '') ?>
                                     </div>
                                 </th>
                             <?php endforeach; ?>
@@ -197,7 +197,7 @@ require_once 'includes/header.php';
                             <?php foreach ($items as $p): ?>
                                 <tr>
                                     <td class="fw-bold text-dark text-truncate" style="max-width: 250px;">
-                                        <?= htmlspecialchars($p['name']) ?>
+                                        <?= htmlspecialchars($p['name'] ?? '') ?>
                                         <small class="text-muted d-block small" style="font-size: 9px; font-weight: normal;">UOM: <?= $p['uom'] ?> | Pack: <?= $p['pack_size'] ?></small>
                                     </td>
                                     <?php foreach ($reports as $r): ?>

@@ -191,7 +191,7 @@ require_once 'includes/header.php';
             </div>
             <div class="col-md-8 text-md-end pt-4">
                 <?php if ($existing_report): ?>
-                    <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="bi bi-check-circle-fill me-1"></i> Telah Disahkan Oleh: <?= htmlspecialchars($existing_report['checked_by']) ?></span>
+                    <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="bi bi-check-circle-fill me-1"></i> Telah Disahkan Oleh: <?= htmlspecialchars($existing_report['checked_by'] ?? '') ?></span>
                 <?php else: ?>
                     <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="bi bi-exclamation-triangle-fill me-1"></i> Menunggu Pengesahan Harian</span>
                 <?php endif; ?>
@@ -246,7 +246,7 @@ require_once 'includes/header.php';
                             <?php foreach ($items as $item): ?>
                                 <tr class="product-row" id="row_<?= $item['id'] ?>">
                                     <td class="fw-bold text-dark">
-                                        <?= htmlspecialchars($item['name']) ?>
+                                        <?= htmlspecialchars($item['name'] ?? '') ?>
                                         <small class="text-muted d-block small" style="font-size:10px;">ID: #<?= $item['id'] ?> | UOM: <?= $item['uom'] ?> | Pack: <?= $item['pack_size'] ?> units</small>
                                     </td>
                                     <td class="text-center bg-light fw-bold" id="sys_<?= $item['id'] ?>"><?= $item['total_cartons'] ?></td>

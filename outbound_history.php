@@ -181,7 +181,7 @@ require_once 'includes/header.php';
     
     <?php if (!empty($error)): ?>
         <div class="alert alert-danger shadow-sm border-0 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error) ?>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error ?? '') ?>
         </div>
     <?php endif; ?>
 
@@ -222,16 +222,16 @@ require_once 'includes/header.php';
                             <td class="fw-bold text-dark"><?= date('d/m/Y', strtotime($row['txn_date'])) ?></td>
                             <td>
                                 <span class="badge <?= $badge_class ?> rounded-pill px-3 py-1.5 font-monospace" style="font-size: 0.72rem; font-weight: 800;">
-                                    <?= htmlspecialchars($row['category']) ?>
+                                    <?= htmlspecialchars($row['category'] ?? '') ?>
                                 </span>
                             </td>
-                            <td><code class="fw-bold text-navy"><?= htmlspecialchars($row['do_number'] ?: 'TBA') ?></code></td>
-                            <td class="fw-semibold text-dark"><?= htmlspecialchars($row['destination'] ?: 'Tiada Maklumat') ?></td>
-                            <td><span class="badge bg-light text-dark border fw-bold font-monospace"><?= htmlspecialchars($row['vehicle_plate'] ?: 'Tiada') ?></span></td>
+                            <td><code class="fw-bold text-navy"><?= htmlspecialchars($row['do_number'] ?? '' ?: 'TBA') ?></code></td>
+                            <td class="fw-semibold text-dark"><?= htmlspecialchars($row['destination'] ?? '' ?: 'Tiada Maklumat') ?></td>
+                            <td><span class="badge bg-light text-dark border fw-bold font-monospace"><?= htmlspecialchars($row['vehicle_plate'] ?? '' ?: 'Tiada') ?></span></td>
                             <td class="text-center fw-bold"><?= number_format($row['total_cartons'] ?: 0) ?></td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-outline-info btn-sm fw-bold px-3 btn-view-details" 
-                                        data-id="<?= $row['id'] ?>" data-category="<?= $row['category'] ?>" data-do="<?= htmlspecialchars($row['do_number']) ?>">
+                                        data-id="<?= $row['id'] ?>" data-category="<?= $row['category'] ?>" data-do="<?= htmlspecialchars($row['do_number'] ?? '') ?>">
                                     <i class="bi bi-eye-fill me-1"></i> Papar
                                 </button>
                             </td>

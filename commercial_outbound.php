@@ -286,7 +286,7 @@ require_once 'includes/header.php';
                                 <select name="items[0][product_id]" class="form-select product-select" required>
                                     <option value="">-- Choose Product --</option>
                                     <?php foreach($products as $p): ?>
-                                        <option value="<?= $p['id'] ?>" data-stock="<?= $p['qty_on_hand'] ?>"><?= htmlspecialchars($p['name']) ?> (Baki: <?= $p['qty_on_hand'] ?> ctn)</option>
+                                        <option value="<?= $p['id'] ?>" data-stock="<?= $p['qty_on_hand'] ?>"><?= htmlspecialchars($p['name'] ?? '') ?> (Baki: <?= $p['qty_on_hand'] ?> ctn)</option>
                                     <?php endforeach; ?>
                                 </select>
                             </td>
@@ -351,8 +351,8 @@ require_once 'includes/header.php';
                             <tr>
                                 <td class="ps-3 text-muted"><?= date('d/m/Y h:i A', strtotime($log['created_at'])) ?></td>
                                 <td class="fw-bold text-dark"><?= date('d/m/Y', strtotime($log['date'])) ?></td>
-                                <td><span class="badge bg-light text-primary border font-monospace px-2.5 py-1.5 fs-7" style="color: #0b2147; border-color: #e2e8f0;"><?= htmlspecialchars($log['doc_ref'] ?: 'N/A') ?></span></td>
-                                <td><?= htmlspecialchars($log['customer']) ?></td>
+                                <td><span class="badge bg-light text-primary border font-monospace px-2.5 py-1.5 fs-7" style="color: #0b2147; border-color: #e2e8f0;"><?= htmlspecialchars($log['doc_ref'] ?? '' ?: 'N/A') ?></span></td>
+                                <td><?= htmlspecialchars($log['customer'] ?? '') ?></td>
                                 <td class="text-center">
                                     <a href="outbound_history.php?search=<?= urlencode($log['doc_ref']) ?>" class="btn btn-sm btn-outline-primary py-1 px-3 fw-bold">
                                         <i class="bi bi-eye-fill me-1"></i> <span data-lang="co_col_view">Papar Detail</span>

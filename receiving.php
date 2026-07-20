@@ -245,12 +245,12 @@ require_once 'includes/header.php';
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-bold" data-lang="inv_col_expiry">Expiry Date</label>
-                    <input type="date" name="expiry_date" id="expiry_date" class="form-control readonly-input" required readonly>
+                    <input type="date" name="expiry_date" id="expiry_date" class="form-control" required>
                 </div>
 
                 <div class="col-md-6">
                     <label class="form-label fw-bold" data-lang="dash_batch_no">Batch No</label>
-                    <input type="text" name="batch_no" id="batch_no" class="form-control readonly-input text-center" required readonly>
+                    <input type="text" name="batch_no" id="batch_no" class="form-control text-center" required>
                 </div>
             </div>
 
@@ -265,7 +265,7 @@ require_once 'includes/header.php';
                     <select name="pallet_type" id="pallet_type" class="form-select" required>
                         <option value="none" data-lang="pallet_none">None</option>
                         <?php foreach ($pallet_types as $pt): ?>
-                            <option value="<?= htmlspecialchars($pt['code']) ?>"><?= htmlspecialchars($pt['name']) ?></option>
+                            <option value="<?= htmlspecialchars($pt['code'] ?? '') ?>"><?= htmlspecialchars($pt['name'] ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

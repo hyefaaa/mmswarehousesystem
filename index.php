@@ -382,11 +382,11 @@ require_once 'includes/header.php';
                     <div class="my-4">
                         <i class="bi bi-clipboard-check" style="font-size: 4.5rem; color: #16a34a; filter: drop-shadow(0 4px 6px rgba(22, 163, 74, 0.15));"></i>
                     </div>
-                    <h4 class="fw-extrabold" style="color: #14532d; letter-spacing: -0.5px;" data-lang="jomcha_dash_st_title">Kiraan Stok Jomcha</h4>
+                    <h4 class="fw-extrabold" style="color: #14532d; letter-spacing: -0.5px;" data-lang="jomcha_dash_st_title">Kemaskini Stok Jomcha</h4>
                     <p class="text-muted px-3" style="font-size:0.88rem;" data-lang="jomcha_dash_st_desc">Kira fizikal stok kaunter & simpanan Jomcha. Auto-billing bagi perbezaan stok yang dikesan berkurang.</p>
                 </div>
                 <a href="jomcha_stock_take.php" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm mt-3" style="background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); border: none; font-size:1.05rem;">
-                    <i class="bi bi-calculator me-2"></i> <span data-lang="jomcha_dash_st_btn">Mula Kira Stok</span>
+                    <i class="bi bi-calculator me-2"></i> <span data-lang="jomcha_dash_st_btn">Mula Kemaskini Stok</span>
                 </a>
             </div>
         </div>
@@ -539,8 +539,8 @@ require_once 'includes/header.php';
                                     $risk_text = $is_critical ? 'CRIT' : 'WARN';
                                 ?>
                                 <tr>
-                                    <td class="ps-3 fw-bold text-dark text-truncate" style="max-width: 140px;"><?= htmlspecialchars($eb['product_name']) ?></td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($eb['batch_no'] ?: 'Tiada') ?></span></td>
+                                    <td class="ps-3 fw-bold text-dark text-truncate" style="max-width: 140px;"><?= htmlspecialchars($eb['product_name'] ?? '') ?></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($eb['batch_no'] ?? '' ?: 'Tiada') ?></span></td>
                                     <td class="text-center fw-bold"><?= number_format($eb['qty_on_hand']) ?> <small class="text-muted">ctn</small></td>
                                     <td class="text-center fw-bold text-<?= $badge_color ?>"><?= $eb['days_left'] ?> H</td>
                                     <td class="text-center pe-3">
@@ -588,8 +588,8 @@ require_once 'includes/header.php';
                                         $badge_class = ($qty == 0) ? 'bg-danger text-white' : 'bg-warning-subtle text-warning-emphasis';
                                     ?>
                                     <tr>
-                                        <td class="ps-3 fw-bold text-dark text-truncate" style="max-width: 220px;"><?= htmlspecialchars($lp['name']) ?></td>
-                                         <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($lp['category']) ?></span></td>
+                                        <td class="ps-3 fw-bold text-dark text-truncate" style="max-width: 220px;"><?= htmlspecialchars($lp['name'] ?? '') ?></td>
+                                         <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($lp['category'] ?? '') ?></span></td>
                                         <td class="text-end pe-4 fw-bold text-<?= $color ?>">
                                             <span class="badge <?= $badge_class ?> rounded-pill px-2.5 py-1">
                                                 <?= number_format($qty) ?> ctn
@@ -646,7 +646,7 @@ require_once 'includes/header.php';
                                 <tr>
                                     <td class="ps-3 fw-bold">#<?= $req['id'] ?></td>
                                     <td><?= date('d/m/Y', strtotime($req['request_date'])) ?></td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($req['requested_by']) ?></span></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($req['requested_by'] ?? '') ?></span></td>
                                     <td class="text-center fw-semibold"><?= $req['item_count'] ?> <span data-lang="lbl_product_unit">product</span></td>
                                     <td class="text-center fw-bold text-primary"><?= number_format($req['total_qty']) ?> ctn</td>
                                     <td class="text-center">
@@ -702,6 +702,13 @@ require_once 'includes/header.php';
                 <div class="content">
                     <span class="title" data-lang="card_stock_take">Stock Take / Opname</span>
                     <span class="desc" data-lang="card_stock_take_d">Audit fizikal stok & penyelarasan inventori.</span>
+                </div>
+            </a>
+            <a href="warehouse_layout.php" class="nav-card">
+                <div class="icon-box bg-dark text-white"><i class="bi bi-layout-three-columns"></i></div>
+                <div class="content">
+                    <span class="title">Warehouse Visual Layout</span>
+                    <span class="desc">Pelan visual grid susun atur slot gudang.</span>
                 </div>
             </a>
         </div>

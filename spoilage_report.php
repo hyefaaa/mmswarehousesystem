@@ -68,8 +68,8 @@ require_once 'includes/header.php';
                     <tr>
                         <td class="ps-3 small"><?= date('d/m/Y', strtotime($row['reported_at'])) ?></td>
                         <td>
-                            <div class="fw-bold"><?= htmlspecialchars($row['product_name']) ?></div>
-                            <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">Batch: <?= htmlspecialchars($row['batch_no']) ?></span>
+                            <div class="fw-bold"><?= htmlspecialchars($row['product_name'] ?? '') ?></div>
+                            <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">Batch: <?= htmlspecialchars($row['batch_no'] ?? '') ?></span>
                         </td>
                         <td class="text-danger fw-bold"><?= number_format($row['qty']) ?> <small>pcs</small></td>
                         <td>
@@ -97,7 +97,7 @@ require_once 'includes/header.php';
                         </td>
                         <td class="small">
                             <?php if($row['cn_number']): ?>
-                                <div class="fw-bold">#<?= htmlspecialchars($row['cn_number']) ?></div>
+                                <div class="fw-bold">#<?= htmlspecialchars($row['cn_number'] ?? '') ?></div>
                                 <div class="text-muted" style="font-size: 0.75rem;"><?= date('d/m/Y', strtotime($row['cn_date'])) ?></div>
                             <?php else: ?>
                                 <span class="text-muted">-</span>

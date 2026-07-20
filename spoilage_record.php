@@ -169,8 +169,8 @@ require_once 'includes/header.php';
                                     <select name="items[0][batch_id]" class="form-select batch-select shadow-sm" required onchange="calculateRow(this)">
                                         <option value="" data-pcs="1" data-lang="spoil_select_batch_placeholder">-- Pilih Batch --</option>
                                         <?php foreach($batches as $b): ?>
-                                            <option value="<?= $b['id'] ?>" data-pcs="<?= $b['pack_size'] ?>" data-expiry="<?= $b['expiry_date'] ?>" data-batch="<?= htmlspecialchars($b['batch_no']) ?>">
-                                                <?= htmlspecialchars($b['product_name']) ?> (B: <?= $b['batch_no'] ?> | Stok: <?= $b['qty_on_hand'] ?>)
+                                            <option value="<?= $b['id'] ?>" data-pcs="<?= $b['pack_size'] ?>" data-expiry="<?= $b['expiry_date'] ?>" data-batch="<?= htmlspecialchars($b['batch_no'] ?? '') ?>">
+                                                <?= htmlspecialchars($b['product_name'] ?? '') ?> (B: <?= $b['batch_no'] ?> | Stok: <?= $b['qty_on_hand'] ?>)
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -231,7 +231,7 @@ require_once 'includes/header.php';
     const batchOptions = `<option value="" data-pcs="1">${selectPlaceholderText}</option><?php 
         $opt = '';
         foreach($batches as $b) {
-            $opt .= '<option value="'.$b['id'].'" data-pcs="'.$b['pack_size'].'" data-expiry="'.$b['expiry_date'].'" data-batch="'.htmlspecialchars($b['batch_no']).'">'.htmlspecialchars($b['product_name']).' (B: '.$b['batch_no'].' | Stok: '.$b['qty_on_hand'].')</option>';
+            $opt .= '<option value="'.$b['id'].'" data-pcs="'.$b['pack_size'].'" data-expiry="'.$b['expiry_date'].'" data-batch="'.htmlspecialchars($b['batch_no'] ?? '').'">'.htmlspecialchars($b['product_name'] ?? '').' (B: '.$b['batch_no'].' | Stok: '.$b['qty_on_hand'].')</option>';
         }
         echo $opt;
     ?>`;

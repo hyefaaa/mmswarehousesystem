@@ -4,36 +4,41 @@ require_once '../config/db.php';
 header('Content-Type: application/json');
 
 try {
-    $stmt = $pdo->query("
+    // Dapatkan semua slot fizikal gudang
+    $slots_stmt = $pdo->query("SELECT location_code, zone, lane, row_num FROM warehouse_slots ORDER BY location_code ASC");
+    $slots = $slots_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Dapatkan tugasan aktif daripada slot_assignments
+    $assign_stmt = $pdo->query("
         SELECT 
-            ws.location_code, 
-            ws.zone, 
-            ws.lane, 
-            ws.row_num,
+            sa.location_code,
+            sa.batch_id,
+            b.batch_no,
+            b.qty_on_hand AS quantity,
             p.name AS sku_name,
             p.pallet_capacity,
             p.pack_size,
-            b.batch_no,
-            b.qty_on_hand AS quantity,
-            b.created_at AS received_date_timestamp,
-            b.pallet_id_tag,
             b.pallet_type
-        FROM warehouse_slots ws
-        LEFT JOIN inventory_batches b ON ws.batch_id = b.id
-        LEFT JOIN products p ON b.product_id = p.id
-        ORDER BY 
-            CASE ws.zone
-                WHEN 'PSS' THEN 1
-                WHEN 'COM' THEN 2
-                WHEN 'POW' THEN 3
-            END,
-            ws.lane ASC, 
-            ws.row_num ASC
+        FROM slot_assignments sa
+        JOIN inventory_batches b ON sa.batch_id = b.id
+        JOIN products p ON b.product_id = p.id
+        WHERE b.qty_on_hand > 0
     ");
-    
-    $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $assignments = $assign_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Kumpulkan tugasan mengikut location_code
+    $grouped = [];
+    foreach ($assignments as $a) {
+        $grouped[$a['location_code']][] = $a;
+    }
+
+    // Pasangkan senarai tugasan ke dalam setiap slot
+    foreach ($slots as &$slot) {
+        $slot['items'] = $grouped[$slot['location_code']] ?? [];
+    }
+
     echo json_encode(['status' => 'success', 'data' => $slots]);
-    
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

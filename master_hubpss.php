@@ -366,7 +366,7 @@ require_once 'includes/header.php';
     
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h3 class="fw-bold text-navy mb-0"><i class="bi bi-display me-2 text-primary"></i><span data-lang="pss_hub_control">Logistics Monitor & Control</span></h3>
-        <span class="badge bg-primary px-3 py-2 rounded-pill text-uppercase" style="letter-spacing: 0.5px;"><span data-lang="pss_hub_access">AKSES</span>: <?= htmlspecialchars($role) ?></span>
+        <span class="badge bg-primary px-3 py-2 rounded-pill text-uppercase" style="letter-spacing: 0.5px;"><span data-lang="pss_hub_access">AKSES</span>: <?= htmlspecialchars($role ?? '') ?></span>
     </div>
 
     <!-- Overall real-time progress bar -->

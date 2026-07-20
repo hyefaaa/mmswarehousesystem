@@ -237,7 +237,7 @@ require_once 'includes/header.php';
                                 <select name="items[0][product_id]" class="form-select product-select" required>
                                     <option value="" data-lang="jomcha_product">-- Pilih Produk --</option>
                                     <?php foreach($products as $p): ?>
-                                        <option value="<?= $p['id'] ?>" data-stock="<?= $p['qty_on_hand'] ?>"><?= htmlspecialchars($p['name']) ?> (Baki: <?= $p['qty_on_hand'] ?> ctn)</option>
+                                        <option value="<?= $p['id'] ?>" data-stock="<?= $p['qty_on_hand'] ?>"><?= htmlspecialchars($p['name'] ?? '') ?> (Baki: <?= $p['qty_on_hand'] ?> ctn)</option>
                                     <?php endforeach; ?>
                                 </select>
                             </td>
@@ -304,9 +304,9 @@ require_once 'includes/header.php';
                             <tr>
                                 <td class="ps-3 text-muted"><?= date('d/m/Y h:i A', strtotime($log['created_at'])) ?></td>
                                 <td class="fw-bold text-dark"><?= date('d/m/Y', strtotime($log['date'])) ?></td>
-                                <td><span class="badge-ref"><?= htmlspecialchars($log['doc_ref'] ?: 'N/A') ?></span></td>
-                                <td><?= htmlspecialchars($log['customer']) ?></td>
-                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($log['vehicle'] ?: '-') ?></span></td>
+                                <td><span class="badge-ref"><?= htmlspecialchars($log['doc_ref'] ?? '' ?: 'N/A') ?></span></td>
+                                <td><?= htmlspecialchars($log['customer'] ?? '') ?></td>
+                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($log['vehicle'] ?? '' ?: '-') ?></span></td>
                                 <td class="text-center">
                                     <a href="outbound_history.php?search=<?= urlencode($log['doc_ref']) ?>" class="btn btn-sm btn-outline-purple py-1 px-3 fw-bold btn-outline-primary">
                                         <i class="bi bi-eye-fill me-1"></i> <span data-lang="jomcha_btn_view">Papar Detail</span>

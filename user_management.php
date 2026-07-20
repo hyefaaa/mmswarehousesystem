@@ -60,7 +60,7 @@ require_once 'includes/header.php';
     
     <?php if (!empty($error)): ?>
         <div class="alert alert-danger shadow-sm border-0 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error) ?>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error ?? '') ?>
         </div>
     <?php endif; ?>
 
@@ -106,27 +106,27 @@ require_once 'includes/header.php';
                         ?>
                         <tr>
                             <td>
-                                <div class="fw-bold text-dark"><?= htmlspecialchars($u['full_name']) ?></div>
+                                <div class="fw-bold text-dark"><?= htmlspecialchars($u['full_name'] ?? '') ?></div>
                             </td>
-                            <td><code class="fw-bold text-navy"><?= htmlspecialchars($u['username']) ?></code></td>
+                            <td><code class="fw-bold text-navy"><?= htmlspecialchars($u['username'] ?? '') ?></code></td>
                             <td>
                                 <span class="badge <?= $role_badge ?> rounded-pill px-3 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;">
-                                    <?= htmlspecialchars($u['role']) ?>
+                                    <?= htmlspecialchars($u['role'] ?? '') ?>
                                 </span>
                                 <?php if ($u['role'] === 'dealer' && !empty($u['hd_name'])): ?>
                                     <div class="small text-muted mt-1" style="font-size: 0.75rem;">
-                                        <i class="bi bi-geo-alt-fill me-1"></i><?= htmlspecialchars($u['hd_name']) ?>
+                                        <i class="bi bi-geo-alt-fill me-1"></i><?= htmlspecialchars($u['hd_name'] ?? '') ?>
                                     </div>
                                 <?php endif; ?>
                                 <?php if (in_array($u['role'], ['staff', 'intern', 'pss_admin', 'staff_jomcha'])): ?>
                                     <?php if (!empty($u['allowed_view_modules'])): ?>
                                         <div class="small text-muted mt-1" style="font-size: 0.7rem; max-width: 220px;">
-                                            <i class="bi bi-eye-fill me-1 text-info"></i>View: <span class="text-dark fw-bold"><?= str_replace(',', ', ', htmlspecialchars($u['allowed_view_modules'])) ?></span>
+                                            <i class="bi bi-eye-fill me-1 text-info"></i>View: <span class="text-dark fw-bold"><?= str_replace(',', ', ', htmlspecialchars($u['allowed_view_modules'] ?? '')) ?></span>
                                         </div>
                                     <?php endif; ?>
                                     <?php if (!empty($u['allowed_modules'])): ?>
                                         <div class="small text-muted mt-1" style="font-size: 0.7rem; max-width: 220px;">
-                                            <i class="bi bi-pencil-fill me-1 text-success"></i>Edit: <span class="text-dark fw-bold"><?= str_replace(',', ', ', htmlspecialchars($u['allowed_modules'])) ?></span>
+                                            <i class="bi bi-pencil-fill me-1 text-success"></i>Edit: <span class="text-dark fw-bold"><?= str_replace(',', ', ', htmlspecialchars($u['allowed_modules'] ?? '')) ?></span>
                                         </div>
                                     <?php endif; ?>
                                 <?php endif; ?>
@@ -263,6 +263,12 @@ require_once 'includes/header.php';
                                         <label class="form-check-label small" for="view_user_management">User Management</label>
                                     </div>
                                 </div>
+                                <div class="col">
+                                    <div class="form-check">
+                                        <input class="form-check-input permission-view-cb" type="checkbox" value="jomcha" id="view_jomcha" name="allowed_view_modules[]">
+                                        <label class="form-check-label small" for="view_jomcha">Jomcha Stock & Request</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -323,6 +329,12 @@ require_once 'includes/header.php';
                                         <label class="form-check-label small" for="perm_user_management" data-lang="user_mgmt_perm_user_management">User Management</label>
                                     </div>
                                 </div>
+                                 <div class="col">
+                                     <div class="form-check">
+                                         <input class="form-check-input permission-cb" type="checkbox" value="jomcha" id="perm_jomcha" name="allowed_modules[]">
+                                         <label class="form-check-label small" for="perm_jomcha">Jomcha Stock & Request</label>
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                     </div>
@@ -389,8 +401,11 @@ require_once 'includes/header.php';
         // Auto-check View Permission when Edit Permission is checked
         $('.permission-cb').on('change', function() {
             if (this.checked) {
-                const val = $(this).val();
-                $(`#view_${val}`).prop('checked', true);
+                const val = $(this).val().replace(/['"\[\]]/g, '').trim().toLowerCase();
+                if(val) {
+                    $(`#view_${val}`).prop('checked', true);
+                    $(`.permission-view-cb[value="${val}"]`).prop('checked', true);
+                }
             }
         });
     });
@@ -428,15 +443,31 @@ require_once 'includes/header.php';
         
         if (user.role === 'staff' || user.role === 'intern' || user.role === 'pss_admin' || user.role === 'staff_jomcha') {
             if (user.allowed_modules) {
-                const modules = user.allowed_modules.split(',');
+                let modulesStr = user.allowed_modules;
+                if (typeof modulesStr === 'string' && modulesStr.startsWith('[')) {
+                    try { const parsed = JSON.parse(modulesStr); if (Array.isArray(parsed)) modulesStr = parsed.join(','); } catch(e) {}
+                }
+                const modules = String(modulesStr).split(',');
                 modules.forEach(m => {
-                    $(`#perm_${m.trim()}`).prop('checked', true);
+                    let cleanM = m.replace(/['"\[\]]/g, '').trim().toLowerCase();
+                    if(cleanM) {
+                        $(`#perm_${cleanM}`).prop('checked', true);
+                        $(`.permission-cb[value="${cleanM}"]`).prop('checked', true);
+                    }
                 });
             }
             if (user.allowed_view_modules) {
-                const viewModules = user.allowed_view_modules.split(',');
+                let viewModulesStr = user.allowed_view_modules;
+                if (typeof viewModulesStr === 'string' && viewModulesStr.startsWith('[')) {
+                    try { const parsed = JSON.parse(viewModulesStr); if (Array.isArray(parsed)) viewModulesStr = parsed.join(','); } catch(e) {}
+                }
+                const viewModules = String(viewModulesStr).split(',');
                 viewModules.forEach(m => {
-                    $(`#view_${m.trim()}`).prop('checked', true);
+                    let cleanM = m.replace(/['"\[\]]/g, '').trim().toLowerCase();
+                    if(cleanM) {
+                        $(`#view_${cleanM}`).prop('checked', true);
+                        $(`.permission-view-cb[value="${cleanM}"]`).prop('checked', true);
+                    }
                 });
             }
         }

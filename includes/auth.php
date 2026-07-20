@@ -98,11 +98,16 @@ if (!function_exists('check_write_permission')) {
             'save_receiving_multi.php' => 'receiving',
             
             'commercial_outbound.php' => 'outbound_reconcile',
-            'jomcha_outbound.php' => 'outbound_reconcile',
             'reconcile.php' => 'outbound_reconcile',
             'save_commercial_outbound.php' => 'outbound_reconcile',
-            'save_jomcha_outbound.php' => 'outbound_reconcile',
             'save_reconciliation.php' => 'outbound_reconcile',
+            
+            'jomcha_outbound.php' => 'jomcha',
+            'save_jomcha_outbound.php' => 'jomcha',
+            'jomcha_request_stock.php' => 'jomcha',
+            'process_jomcha_request.php' => 'jomcha',
+            'jomcha_stock_take.php' => 'jomcha',
+            'jomcha_monitor_stock.php' => 'jomcha',
             
             'spoilage_record.php' => 'spoilage',
             'spoilage_report.php' => 'spoilage',
@@ -170,13 +175,19 @@ if (!function_exists('check_view_permission')) {
             return false;
         }
 
+        if ($role === 'staff_jomcha') {
+            $clean_page = strtolower(basename($page_name));
+            if ($clean_page === 'jomcha_request_stock.php' || $clean_page === 'process_jomcha_request.php' || $clean_page === 'jomcha_stock_take.php' || $clean_page === 'jomcha_monitor_stock.php') {
+                return true;
+            }
+        }
+
         // Clean page name
         $page_name = strtolower(basename($page_name));
 
+        // Pages that are viewable by any authenticated staff/user
         $always_allow = [
             'index.php', 
-            'change_password.php', 
-            'login.php', 
             'logout.php', 
             'profile.php', 
  
@@ -185,10 +196,7 @@ if (!function_exists('check_view_permission')) {
             'pallet_management.php',
             'inventory_report.php',
             'outbound_history.php',
-            'jomcha_request_stock.php',
-            'process_jomcha_request.php',
-            'jomcha_stock_take.php',
-            'jomcha_monitor_stock.php'
+            'warehouse_layout.php'
         ];
         if (in_array($page_name, $always_allow)) {
             return true;
@@ -231,11 +239,16 @@ if (!function_exists('check_view_permission')) {
             'save_receiving_multi.php' => 'receiving',
             
             'commercial_outbound.php' => 'outbound_reconcile',
-            'jomcha_outbound.php' => 'outbound_reconcile',
             'reconcile.php' => 'outbound_reconcile',
             'save_commercial_outbound.php' => 'outbound_reconcile',
-            'save_jomcha_outbound.php' => 'outbound_reconcile',
             'save_reconciliation.php' => 'outbound_reconcile',
+            
+            'jomcha_outbound.php' => 'jomcha',
+            'save_jomcha_outbound.php' => 'jomcha',
+            'jomcha_request_stock.php' => 'jomcha',
+            'process_jomcha_request.php' => 'jomcha',
+            'jomcha_stock_take.php' => 'jomcha',
+            'jomcha_monitor_stock.php' => 'jomcha',
             
             'spoilage_record.php' => 'spoilage',
             'spoilage_report.php' => 'spoilage',

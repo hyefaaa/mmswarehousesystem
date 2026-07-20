@@ -118,11 +118,11 @@ if (!function_exists('send_email_notification')) {
         $htmlMessage = "
         <html>
         <head>
-            <title>" . htmlspecialchars($subject) . "</title>
+            <title>" . htmlspecialchars($subject ?? '') . "</title>
         </head>
         <body style='font-family: Arial, sans-serif; background-color: #f8fafc; padding: 20px;'>
             <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;'>
-                <h2 style='color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;'>" . htmlspecialchars($subject) . "</h2>
+                <h2 style='color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;'>" . htmlspecialchars($subject ?? '') . "</h2>
                 <div style='color: #334155; font-size: 14px; line-height: 1.6; margin-top: 15px;'>
                     " . nl2br($message) . "
                 </div>

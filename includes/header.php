@@ -22,7 +22,7 @@ if (function_exists('check_write_permission')) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?></title>
+    <title><?= htmlspecialchars($page_title ?? '') ?></title>
     <!-- Favicon / Gambar Browser Logo -->
     <link rel="shortcut icon" href="img/logo.png" type="image/png">
     
@@ -270,6 +270,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                         <li><a class="dropdown-item" href="inventory_report.php"><i class="bi bi-clipboard2-data me-1"></i><span data-lang="nav_inv_report">Inventory Report</span></a></li>
                         <li><a class="dropdown-item" href="pallet_management.php"><i class="bi bi-grid-3x3-gap me-1"></i><span data-lang="nav_pallet_monitor">Pallet Monitor</span></a></li>
+                        <li><a class="dropdown-item" href="warehouse_layout.php"><i class="bi bi-layout-three-columns me-1"></i><span>Warehouse Layout</span></a></li>
                     </ul>
                 </li>
                 
@@ -331,7 +332,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 <span class="text-white small fw-bold d-flex align-items-center gap-1">
                     <i class="bi bi-person-circle me-1 text-info fs-5"></i> 
                     <?= htmlspecialchars($_SESSION['full_name'] ?? 'Pengguna') ?> 
-                    <span class="badge bg-info text-dark ms-1 fw-bold text-uppercase" style="font-size: 0.65rem;"><?= htmlspecialchars($role) ?></span>
+                    <span class="badge bg-info text-dark ms-1 fw-bold text-uppercase" style="font-size: 0.65rem;"><?= htmlspecialchars($role ?? '') ?></span>
                     <button type="button" class="btn btn-sm btn-outline-info border-0 p-1 text-white ms-1" data-bs-toggle="modal" data-bs-target="#changePasswordModal" title="Tukar Kata Laluan">
                         <i class="bi bi-key-fill"></i>
                     </button>

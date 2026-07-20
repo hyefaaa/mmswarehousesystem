@@ -48,6 +48,11 @@ foreach ($latest_takes as $take) {
         $take['ch2_total'] = $jcb_ch2;
         $take['rk_total'] = $jcb_rk;
         $take['total'] = $jcb_sum;
+        $locs = [];
+        if($jcb_ch1 > 0) $locs[] = "Chiller 1";
+        if($jcb_ch2 > 0) $locs[] = "Chiller 2";
+        if($jcb_rk > 0) $locs[] = "Rak";
+        $take['locs'] = implode(', ', $locs);
         $jc_barn_products[] = $take;
         $jc_barn_total_units += $jcb_sum;
     }
@@ -67,6 +72,13 @@ foreach ($latest_takes as $take) {
         $take['meat_total'] = $mms_meat;
         $take['ic_total'] = $mms_ic;
         $take['total'] = $mms_sum;
+        $locs = [];
+        if($mms_rk > 0) $locs[] = "Rak";
+        if($mms_ch1 > 0) $locs[] = "Chiller 1";
+        if($mms_ch2 > 0) $locs[] = "Chiller 2";
+        if($mms_meat > 0) $locs[] = "Frz (Daging)";
+        if($mms_ic > 0) $locs[] = "Frz (Aiskrim)";
+        $take['locs'] = implode(', ', $locs);
         $mms_products[] = $take;
         $mms_total_units += $mms_sum;
     }
@@ -90,6 +102,15 @@ foreach ($latest_takes as $take) {
         $take['fz1_total'] = $sa_fz1;
         $take['fz2_total'] = $sa_fz2;
         $take['total'] = $sa_sum;
+        $locs = [];
+        if($sa_rk > 0) $locs[] = "Rak";
+        if($sa_pl1 > 0) $locs[] = "Pallet 1";
+        if($sa_pl2 > 0) $locs[] = "Pallet 2";
+        if($sa_ch1 > 0) $locs[] = "Chiller 1";
+        if($sa_ch2 > 0) $locs[] = "Chiller 2";
+        if($sa_fz1 > 0) $locs[] = "Frz 1";
+        if($sa_fz2 > 0) $locs[] = "Frz 2";
+        $take['locs'] = implode(', ', $locs);
         $sa_products[] = $take;
         $sa_total_units += $sa_sum;
     }
@@ -291,10 +312,10 @@ require_once 'includes/header.php';
                             <?php else: foreach ($jc_barn_products as $stk): 
                                 $cs = (int)$stk['pack_size'] > 0 ? (int)$stk['pack_size'] : 1;
                             ?>
-                                <tr class="monitor-row-item border-bottom" data-name="<?= strtolower(htmlspecialchars($stk['product_name'])) ?>">
+                                <tr class="monitor-row-item border-bottom" data-name="<?= strtolower(htmlspecialchars($stk['product_name'] ?? '')) ?>">
                                     <td class="ps-3">
-                                        <span class="badge cat-badge mb-1 rounded-pill"><?= htmlspecialchars($stk['category']) ?></span>
-                                        <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['product_name']) ?></h6>
+                                        <span class="badge cat-badge mb-1 rounded-pill"><?= htmlspecialchars($stk['category'] ?? '') ?></span>
+                                        <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['product_name'] ?? '') ?></h6>
                                     </td>
                                     <td class="text-center">
                                         <span class="fw-bold text-dark"><?= floor($stk['jcb_chiller_1_ctn']) ?> ctn</span>
@@ -312,6 +333,7 @@ require_once 'includes/header.php';
                                         <?= number_format($stk['total']) ?> pcs
                                         <div class="text-muted small fw-semibold" style="font-size: 10.5px;">
                                             (<?= floor($stk['total'] / $cs) ?> ctn + <?= $stk['total'] % $cs ?> pcs)
+                                            <?php if(!empty($stk['locs'])): ?><div class="mt-1 text-info"><i class="bi bi-geo-alt"></i> <?= $stk['locs'] ?></div><?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -347,10 +369,10 @@ require_once 'includes/header.php';
                             <?php else: foreach ($mms_products as $stk): 
                                 $cs = (int)$stk['pack_size'] > 0 ? (int)$stk['pack_size'] : 1;
                             ?>
-                                <tr class="monitor-row-item border-bottom" data-name="<?= strtolower(htmlspecialchars($stk['product_name'])) ?>">
+                                <tr class="monitor-row-item border-bottom" data-name="<?= strtolower(htmlspecialchars($stk['product_name'] ?? '')) ?>">
                                     <td class="ps-3">
-                                        <span class="badge cat-badge mb-1 rounded-pill"><?= htmlspecialchars($stk['category']) ?></span>
-                                        <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['product_name']) ?></h6>
+                                        <span class="badge cat-badge mb-1 rounded-pill"><?= htmlspecialchars($stk['category'] ?? '') ?></span>
+                                        <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['product_name'] ?? '') ?></h6>
                                     </td>
                                     <td class="text-center">
                                         <span class="fw-bold text-dark"><?= floor($stk['mms_rack_ctn']) ?> ctn</span>
@@ -376,6 +398,7 @@ require_once 'includes/header.php';
                                         <?= number_format($stk['total']) ?> pcs
                                         <div class="text-muted small fw-semibold" style="font-size: 10.5px;">
                                             (<?= floor($stk['total'] / $cs) ?> ctn + <?= $stk['total'] % $cs ?> pcs)
+                                            <?php if(!empty($stk['locs'])): ?><div class="mt-1 text-info"><i class="bi bi-geo-alt"></i> <?= $stk['locs'] ?></div><?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -413,10 +436,10 @@ require_once 'includes/header.php';
                             <?php else: foreach ($sa_products as $stk): 
                                 $cs = (int)$stk['pack_size'] > 0 ? (int)$stk['pack_size'] : 1;
                             ?>
-                                <tr class="monitor-row-item border-bottom" data-name="<?= strtolower(htmlspecialchars($stk['product_name'])) ?>">
+                                <tr class="monitor-row-item border-bottom" data-name="<?= strtolower(htmlspecialchars($stk['product_name'] ?? '')) ?>">
                                     <td class="ps-3">
-                                        <span class="badge cat-badge mb-1 rounded-pill"><?= htmlspecialchars($stk['category']) ?></span>
-                                        <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['product_name']) ?></h6>
+                                        <span class="badge cat-badge mb-1 rounded-pill"><?= htmlspecialchars($stk['category'] ?? '') ?></span>
+                                        <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['product_name'] ?? '') ?></h6>
                                     </td>
                                     <td class="text-center">
                                         <span class="fw-bold text-dark"><?= floor($stk['sa_rack_ctn']) ?> ctn</span>
@@ -450,6 +473,7 @@ require_once 'includes/header.php';
                                         <?= number_format($stk['total']) ?> pcs
                                         <div class="text-muted small fw-semibold" style="font-size: 10.5px;">
                                             (<?= floor($stk['total'] / $cs) ?> ctn + <?= $stk['total'] % $cs ?> pcs)
+                                            <?php if(!empty($stk['locs'])): ?><div class="mt-1 text-info"><i class="bi bi-geo-alt"></i> <?= $stk['locs'] ?></div><?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>

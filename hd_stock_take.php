@@ -157,7 +157,7 @@ require_once 'includes/header.php';
                         <select name="product_id" id="productSelect" class="form-select w-100" required>
                             <option value="">-- Pilih Produk --</option>
                             <?php foreach ($products as $p): ?>
-                                <option value="<?= $p['id'] ?>">[<?= htmlspecialchars($p['category']) ?>] <?= htmlspecialchars($p['name']) ?></option>
+                                <option value="<?= $p['id'] ?>">[<?= htmlspecialchars($p['category'] ?? '') ?>] <?= htmlspecialchars($p['name'] ?? '') ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -192,7 +192,7 @@ require_once 'includes/header.php';
                             <select id="destSelect" class="form-select">
                                 <option value="" data-lang="hd_stock_destination_placeholder">-- Pilih Destinasi --</option>
                                 <?php foreach ($schools as $sch): ?>
-                                    <option value="<?= htmlspecialchars($sch) ?>"><?= htmlspecialchars($sch) ?></option>
+                                    <option value="<?= htmlspecialchars($sch ?? '') ?>"><?= htmlspecialchars($sch ?? '') ?></option>
                                 <?php endforeach; ?>
                                 <option value="CUSTOM">-- Destinasi Lain --</option>
                             </select>
@@ -252,14 +252,14 @@ require_once 'includes/header.php';
                                         <tr>
                                             <td class="ps-3 text-secondary font-monospace"><?= date('d/m/Y H:i', strtotime($log['created_at'])) ?></td>
                                             <?php if (is_staff_role($role)): ?>
-                                                <td class="fw-bold text-navy text-uppercase"><?= htmlspecialchars($log['dealer']) ?></td>
+                                                <td class="fw-bold text-navy text-uppercase"><?= htmlspecialchars($log['dealer'] ?? '') ?></td>
                                             <?php endif; ?>
-                                            <td class="fw-bold text-dark"><?= htmlspecialchars($log['product_name']) ?></td>
-                                            <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($log['batch_no'] ?: '-') ?></span></td>
+                                            <td class="fw-bold text-dark"><?= htmlspecialchars($log['product_name'] ?? '') ?></td>
+                                            <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($log['batch_no'] ?? '' ?: '-') ?></span></td>
                                             <td><span class="badge bg-<?= $type_badge ?>"><?= $type_label ?></span></td>
                                             <td class="text-center fw-bold text-primary"><?= htmlspecialchars(trim($qty_str)) ?></td>
-                                            <td class="text-secondary"><?= htmlspecialchars($log['destination'] ?: '-') ?></td>
-                                            <td class="pe-3 text-muted"><?= htmlspecialchars($log['remarks'] ?: '-') ?></td>
+                                            <td class="text-secondary"><?= htmlspecialchars($log['destination'] ?? '' ?: '-') ?></td>
+                                            <td class="pe-3 text-muted"><?= htmlspecialchars($log['remarks'] ?? '' ?: '-') ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

@@ -272,7 +272,7 @@ require_once 'includes/header.php';
             <i class="bi bi-funnel me-1"></i> Tapis
         </div>
         <form method="GET" class="row g-2 align-items-end">
-            <input type="hidden" name="from_location" value="<?= htmlspecialchars($filter_location) ?>">
+            <input type="hidden" name="from_location" value="<?= htmlspecialchars($filter_location ?? '') ?>">
             <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Lokasi Semasa</label>
                 <select name="from_location" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -285,14 +285,14 @@ require_once 'includes/header.php';
                 <select name="category" class="form-select form-select-sm">
                     <option value="">-- Semua --</option>
                     <?php foreach ($all_categories as $cat): ?>
-                        <option value="<?= htmlspecialchars($cat) ?>" <?= ($filter_category === $cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat) ?></option>
+                        <option value="<?= htmlspecialchars($cat ?? '') ?>" <?= ($filter_category === $cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Nama Produk</label>
                 <input type="text" name="product" class="form-control form-control-sm"
-                       placeholder="Cari produk..." value="<?= htmlspecialchars($filter_product) ?>">
+                       placeholder="Cari produk..." value="<?= htmlspecialchars($filter_product ?? '') ?>">
             </div>
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn btn-sm fw-bold w-100" style="background:#0f172a;color:white;">
@@ -310,8 +310,8 @@ require_once 'includes/header.php';
                 <span class="fw-800 text-dark">
                     <i class="bi bi-arrow-left-right me-2 text-info"></i>
                     Stok di
-                    <span class="loc-tag loc-<?= htmlspecialchars($filter_location) ?> ms-1">
-                        <?= htmlspecialchars($filter_location) ?>
+                    <span class="loc-tag loc-<?= htmlspecialchars($filter_location ?? '') ?> ms-1">
+                        <?= htmlspecialchars($filter_location ?? '') ?>
                     </span>
                 </span>
                 <span class="badge bg-secondary ms-2"><?= count($batches) ?> batch</span>
@@ -326,7 +326,7 @@ require_once 'includes/header.php';
         <?php if (empty($batches)): ?>
             <div class="empty-box">
                 <i class="bi bi-inbox"></i>
-                <h5 class="fw-bold">Tiada Stok di <?= htmlspecialchars($filter_location) ?></h5>
+                <h5 class="fw-bold">Tiada Stok di <?= htmlspecialchars($filter_location ?? '') ?></h5>
                 <p class="small text-muted">Tiada batch dengan stok > 0 di lokasi ini.</p>
             </div>
         <?php else: ?>
@@ -355,14 +355,14 @@ require_once 'includes/header.php';
                             $prev_cat = $cat;
                     ?>
                     <tr class="cat-group-row">
-                        <td colspan="10"><i class="bi bi-folder me-2"></i><?= htmlspecialchars($cat) ?></td>
+                        <td colspan="10"><i class="bi bi-folder me-2"></i><?= htmlspecialchars($cat ?? '') ?></td>
                     </tr>
                     <?php endif; ?>
                     <tr data-batch-id="<?= $b['batch_id'] ?>" data-max="<?= $b['qty_on_hand'] ?>">
                         <td><input type="checkbox" class="row-check" value="<?= $b['batch_id'] ?>"></td>
                         <td>
-                            <div class="fw-600"><?= htmlspecialchars($b['product_name']) ?></div>
-                            <small class="text-muted"><?= htmlspecialchars($b['uom']) ?></small>
+                            <div class="fw-600"><?= htmlspecialchars($b['product_name'] ?? '') ?></div>
+                            <small class="text-muted"><?= htmlspecialchars($b['uom'] ?? '') ?></small>
                         </td>
                         <td>
                             <?php
@@ -372,13 +372,13 @@ require_once 'includes/header.php';
                                 };
                             ?>
                             <span style="font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;background:<?= $cat_css ?>">
-                                <?= htmlspecialchars($b['category']) ?>
+                                <?= htmlspecialchars($b['category'] ?? '') ?>
                             </span>
                         </td>
                         <td class="font-monospace small">
                             <?= htmlspecialchars($b['batch_no'] ?? '—') ?>
                             <?php if (!empty($b['lot_no_raw'])): ?>
-                                <br><span class="text-muted"><?= htmlspecialchars($b['lot_no_raw']) ?></span>
+                                <br><span class="text-muted"><?= htmlspecialchars($b['lot_no_raw'] ?? '') ?></span>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -429,7 +429,7 @@ require_once 'includes/header.php';
                         </td>
                         <td class="text-center">
                             <button class="btn btn-transfer-row btn-primary"
-                                    onclick="doTransfer(<?= $b['batch_id'] ?>, <?= $b['product_id'] ?>, '<?= htmlspecialchars($b['product_name'], ENT_QUOTES) ?>', <?= $q ?>)">
+                                    onclick="doTransfer(<?= $b['batch_id'] ?>, <?= $b['product_id'] ?>, '<?= htmlspecialchars($b['product_name'] ?? '', ENT_QUOTES) ?>', <?= $q ?>)">
                                 <i class="bi bi-arrow-right-circle me-1"></i> Pindah
                             </button>
                         </td>
@@ -470,7 +470,7 @@ require_once 'includes/header.php';
 </div>
 
 <script>
-const FROM_LOCATION = '<?= htmlspecialchars($filter_location) ?>';
+const FROM_LOCATION = '<?= htmlspecialchars($filter_location ?? '') ?>';
 
 // ===== QTY VALIDATION =====
 function validateQty(input, max) {

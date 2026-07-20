@@ -58,7 +58,7 @@ require_once 'includes/header.php';
     
     <?php if (!empty($error)): ?>
         <div class="alert alert-danger shadow-sm border-0 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error) ?>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error ?? '') ?>
         </div>
     <?php endif; ?>
 
@@ -106,17 +106,17 @@ require_once 'includes/header.php';
                         <tr style="font-size: 0.85rem;">
                             <td class="text-muted fw-semibold"><?= date('d/m/Y H:i:s', strtotime($row['created_at'])) ?></td>
                             <td>
-                                <span class="fw-bold text-dark"><i class="bi bi-person me-1"></i><?= htmlspecialchars($row['username']) ?></span>
+                                <span class="fw-bold text-dark"><i class="bi bi-person me-1"></i><?= htmlspecialchars($row['username'] ?? '') ?></span>
                             </td>
                             <td>
                                 <span class="badge <?= $badge_color ?> rounded-pill px-2.5 py-1.5 fw-bold" style="font-size: 0.7rem;">
-                                    <?= htmlspecialchars($row['action']) ?>
+                                    <?= htmlspecialchars($row['action'] ?? '') ?>
                                 </span>
                             </td>
-                            <td><code class="text-secondary"><?= htmlspecialchars($row['target_table'] ?: '-') ?></code></td>
+                            <td><code class="text-secondary"><?= htmlspecialchars($row['target_table'] ?? '' ?: '-') ?></code></td>
                             <td class="text-center fw-bold text-navy"><?= $row['record_id'] ?: '-' ?></td>
-                            <td class="fw-medium text-dark"><?= htmlspecialchars($row['details'] ?: 'Tiada keterangan') ?></td>
-                            <td class="text-center text-muted font-monospace" style="font-size: 0.8rem;"><?= htmlspecialchars($row['ip_address']) ?></td>
+                            <td class="fw-medium text-dark"><?= htmlspecialchars($row['details'] ?? '' ?: 'Tiada keterangan') ?></td>
+                            <td class="text-center text-muted font-monospace" style="font-size: 0.8rem;"><?= htmlspecialchars($row['ip_address'] ?? '') ?></td>
                         </tr>
                         <?php endforeach; 
  endif; ?>

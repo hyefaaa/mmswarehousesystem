@@ -488,26 +488,26 @@ body {
     }
 
     /* Responsive Table to Cards conversion */
-    .responsive-table-cards table, 
-    .responsive-table-cards thead, 
-    .responsive-table-cards tbody, 
-    .responsive-table-cards th, 
-    .responsive-table-cards td, 
-    .responsive-table-cards tr { 
+    .responsive-table-cards:not(.table-scroll-x) table, 
+    .responsive-table-cards:not(.table-scroll-x) thead, 
+    .responsive-table-cards:not(.table-scroll-x) tbody, 
+    .responsive-table-cards:not(.table-scroll-x) th, 
+    .responsive-table-cards:not(.table-scroll-x) td, 
+    .responsive-table-cards:not(.table-scroll-x) tr { 
         display: block !important; 
     }
     
-    .responsive-table-cards table {
+    .responsive-table-cards:not(.table-scroll-x) table {
         min-width: 100% !important;
     }
     
-    .responsive-table-cards thead tr { 
+    .responsive-table-cards:not(.table-scroll-x) thead tr { 
         position: absolute;
         top: -9999px;
         left: -9999px;
     }
     
-    .responsive-table-cards tr {
+    .responsive-table-cards:not(.table-scroll-x) tr {
         border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: var(--border-radius-lg);
         margin-bottom: 1.2rem;
@@ -517,7 +517,7 @@ body {
         position: relative;
     }
     
-    .responsive-table-cards td { 
+    .responsive-table-cards:not(.table-scroll-x) td { 
         border: none !important;
         border-bottom: 1px dashed #e2e8f0 !important; 
         position: relative;
@@ -525,12 +525,12 @@ body {
         text-align: left !important;
     }
     
-    .responsive-table-cards td:last-child {
+    .responsive-table-cards:not(.table-scroll-x) td:last-child {
         border-bottom: 0 !important;
         padding-bottom: 0 !important;
     }
     
-    .responsive-table-cards td:before { 
+    .responsive-table-cards:not(.table-scroll-x) td:before { 
         display: block;
         margin-bottom: 6px;
         font-weight: 800;
@@ -542,7 +542,7 @@ body {
     }
 
     /* Fix Select2 inside stacked table cards */
-    .responsive-table-cards .select2-container {
+    .responsive-table-cards:not(.table-scroll-x) .select2-container {
         width: 100% !important;
     }
 

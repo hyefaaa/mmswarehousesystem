@@ -225,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <?php if (!empty($error)): ?>
             <div class="alert alert-danger border-0 bg-danger bg-opacity-10 text-danger text-start small p-3 rounded-3" role="alert">
-                <i class="bi bi-exclamation-octagon me-2"></i> <?= htmlspecialchars($error) ?>
+                <i class="bi bi-exclamation-octagon me-2"></i> <?= htmlspecialchars($error ?? '') ?>
             </div>
         <?php endif; ?>
 

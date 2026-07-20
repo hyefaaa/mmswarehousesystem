@@ -139,7 +139,7 @@ $pallet_types = [];
 try {
     $pallet_types = $pdo->query("SELECT * FROM pallet_types ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Gagal memuatkan jenis palet: ' . htmlspecialchars($e->getMessage()) . '</div>';
+    $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Gagal memuatkan jenis palet: ' . htmlspecialchars($e->getMessage ?? ''()) . '</div>';
 }
 
 // Calculate KPI Metrics for each pallet type
@@ -192,7 +192,7 @@ if (!empty($pallet_types)) {
             ];
         }
     } catch (Exception $e) {
-        $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ralat pangkalan data (KPI): ' . htmlspecialchars($e->getMessage()) . '</div>';
+        $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ralat pangkalan data (KPI): ' . htmlspecialchars($e->getMessage ?? ''()) . '</div>';
     }
 }
 
@@ -207,7 +207,7 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     if (empty($message)) {
-        $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Gagal memuatkan rekod lejar: ' . htmlspecialchars($e->getMessage()) . '</div>';
+        $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Gagal memuatkan rekod lejar: ' . htmlspecialchars($e->getMessage ?? ''()) . '</div>';
     }
 }
 
@@ -248,8 +248,8 @@ require_once 'includes/header.php';
         <div class="col-xl-4 col-md-6">
             <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px;">
                 <div class="card-header bg-white border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold mb-0 text-dark"><?= $i ?> <?= htmlspecialchars($summary['name']) ?></h5>
-                    <span class="badge bg-<?= $c ?>-subtle text-<?= $c ?> fw-bold text-uppercase"><?= htmlspecialchars($summary['code']) ?></span>
+                    <h5 class="fw-bold mb-0 text-dark"><?= $i ?> <?= htmlspecialchars($summary['name'] ?? '') ?></h5>
+                    <span class="badge bg-<?= $c ?>-subtle text-<?= $c ?> fw-bold text-uppercase"><?= htmlspecialchars($summary['code'] ?? '') ?></span>
                 </div>
                 <div class="card-body">
                     <div class="row text-center mb-3">
@@ -304,13 +304,13 @@ require_once 'includes/header.php';
                         ?>
                         <tr>
                             <td class="ps-3 fw-bold text-secondary"><?= date('d/m/Y H:i:s', strtotime($row['transaction_date'])) ?></td>
-                            <td class="fw-bold"><?= htmlspecialchars($row['pallet_name']) ?></td>
+                            <td class="fw-bold"><?= htmlspecialchars($row['pallet_name'] ?? '') ?></td>
                             <td><span class="badge <?= $badge_class ?> fw-bold"><?= $row['transaction_type'] ?></span></td>
                             <td class="text-center fw-bold <?= $row['qty'] < 0 ? 'text-danger' : 'text-success' ?>">
                                 <?= ($row['qty'] > 0 ? '+' : '') . $row['qty'] ?>
                             </td>
-                            <td class="fw-bold text-primary"><?= htmlspecialchars($row['reference_no'] ?: '-') ?></td>
-                            <td class="text-muted"><?= htmlspecialchars($row['notes'] ?: '-') ?></td>
+                            <td class="fw-bold text-primary"><?= htmlspecialchars($row['reference_no'] ?? '' ?: '-') ?></td>
+                            <td class="text-muted"><?= htmlspecialchars($row['notes'] ?? '' ?: '-') ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -335,7 +335,7 @@ require_once 'includes/header.php';
                     <select name="pallet_code" class="form-select" required>
                         <option value="">-- Choose Pallet --</option>
                         <?php foreach ($pallet_types as $pt): ?>
-                            <option value="<?= htmlspecialchars($pt['code']) ?>"><?= htmlspecialchars($pt['name']) ?></option>
+                            <option value="<?= htmlspecialchars($pt['code'] ?? '') ?>"><?= htmlspecialchars($pt['name'] ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

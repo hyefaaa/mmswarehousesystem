@@ -141,12 +141,12 @@ require_once 'includes/header.php';
 <div class="container-fluid px-4 pb-5">
     <?php if (isset($success_msg)): ?>
         <div class="alert alert-success border-0 shadow-sm mb-3">
-            <i class="bi bi-check-circle-fill me-2 text-success"></i><?= htmlspecialchars($success_msg) ?>
+            <i class="bi bi-check-circle-fill me-2 text-success"></i><?= htmlspecialchars($success_msg ?? '') ?>
         </div>
     <?php endif; ?>
     <?php if (isset($error_msg)): ?>
         <div class="alert alert-danger border-0 shadow-sm mb-3">
-            <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><?= htmlspecialchars($error_msg) ?>
+            <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><?= htmlspecialchars($error_msg ?? '') ?>
         </div>
     <?php endif; ?>
     
@@ -156,7 +156,7 @@ require_once 'includes/header.php';
                 <div class="col-md-5">
                     <div class="input-group">
                         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by name or category..." value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by name or category..." value="<?= htmlspecialchars($search ?? '') ?>">
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -207,14 +207,14 @@ require_once 'includes/header.php';
                                             <i class="bi bi-box"></i>
                                         </div>
                                         <div>
-                                            <div class="fw-bold text-dark"><?= htmlspecialchars($p['name']) ?></div>
+                                            <div class="fw-bold text-dark"><?= htmlspecialchars($p['name'] ?? '') ?></div>
                                             <small class="text-muted">ID: #<?= $p['id'] ?></small>
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($p['category']) ?></span></td>
+                                <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($p['category'] ?? '') ?></span></td>
                                 <td class="text-center">
-                                    <small class="fw-bold text-uppercase"><?= htmlspecialchars($p['uom']) ?></small>
+                                    <small class="fw-bold text-uppercase"><?= htmlspecialchars($p['uom'] ?? '') ?></small>
                                 </td>
                                 <td>
                                     <small class="font-monospace text-secondary"><?= htmlspecialchars($p['barcode'] ?? '-') ?></small>
@@ -239,18 +239,19 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <a href="?toggle_id=<?= $p['id'] ?>" 
-                                       class="btn btn-sm <?= $p['is_active'] ? 'btn-outline-danger' : 'btn-outline-success' ?>" 
-                                       title="<?= $p['is_active'] ? 'Deactivate' : 'Activate' ?>">
+                                    <button type="button" 
+                                            class="btn btn-sm <?= $p['is_active'] ? 'btn-outline-danger' : 'btn-outline-success' ?>" 
+                                            title="<?= $p['is_active'] ? 'Deactivate' : 'Activate' ?>"
+                                            onclick="confirmToggle(<?= $p['id'] ?>, <?= $p['is_active'] ? 'true' : 'false' ?>, '<?= htmlspecialchars(addslashes($p['name'] ?? '')) ?>')">
                                         <i class="bi <?= $p['is_active'] ? 'bi-lock' : 'bi-unlock' ?>"></i>
-                                    </a>
+                                    </button>
                                     <button class="btn btn-sm btn-outline-primary" 
                                             title="Edit Product" 
                                             onclick="openEditModal(this)"
                                             data-id="<?= $p['id'] ?>"
-                                            data-name="<?= htmlspecialchars($p['name']) ?>"
-                                            data-category="<?= htmlspecialchars($p['category']) ?>"
-                                            data-uom="<?= htmlspecialchars($p['uom']) ?>"
+                                            data-name="<?= htmlspecialchars($p['name'] ?? '') ?>"
+                                            data-category="<?= htmlspecialchars($p['category'] ?? '') ?>"
+                                            data-uom="<?= htmlspecialchars($p['uom'] ?? '') ?>"
                                             data-pack-size="<?= $p['pack_size'] ?>"
                                             data-pallet-capacity="<?= $p['pallet_capacity'] ?>"
                                             data-barcode="<?= htmlspecialchars($p['barcode'] ?? '') ?>"
@@ -344,7 +345,7 @@ require_once 'includes/header.php';
                             <input type="text" name="category" list="category_datalist" class="form-control" placeholder="UHT / PST / PSS" required>
                             <datalist id="category_datalist">
                                 <?php foreach($categories as $cat): ?>
-                                    <option value="<?= htmlspecialchars($cat) ?>">
+                                    <option value="<?= htmlspecialchars($cat ?? '') ?>">
                                 <?php endforeach; ?>
                             </datalist>
                         </div>
@@ -411,6 +412,26 @@ function openEditModal(btn) {
     const myModal = new bootstrap.Modal(document.getElementById('editProductModal'));
     myModal.show();
 }
-</script>
 
+function confirmToggle(id, isActive, name) {
+    const actionText = isActive ? 'Nyahaktif' : 'Aktifkan';
+    const color = isActive ? '#dc3545' : '#198754';
+    const icon = isActive ? 'warning' : 'question';
+    
+    Swal.fire({
+        title: `${actionText} Produk?`,
+        html: `Adakah anda pasti untuk <b>${actionText.toLowerCase()}</b> produk:<br><span class="text-navy fw-bold">${name}</span>?`,
+        icon: icon,
+        showCancelButton: true,
+        confirmButtonColor: color,
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, Teruskan',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `?toggle_id=${id}`;
+        }
+    });
+}
+</script>
 <?php require_once 'includes/footer.php'; ?>

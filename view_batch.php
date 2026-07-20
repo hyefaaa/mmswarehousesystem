@@ -79,7 +79,7 @@ require_once 'includes/header.php';
                     <select name="batch_id" onchange="this.form.submit()" class="form-select form-select-sm border-0 bg-transparent text-white fw-bold shadow-none" style="min-width: 250px; color-scheme: dark; cursor: pointer;">
                         <?php foreach ($batches as $b): ?>
                             <option value="<?= $b['id'] ?>" <?= $b['id'] == $batchId ? 'selected' : '' ?> class="text-dark">
-                                Batch #<?= $b['id'] ?> - <?= htmlspecialchars($b['contract_name']) ?>
+                                Batch #<?= $b['id'] ?> - <?= htmlspecialchars($b['contract_name'] ?? '') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -154,9 +154,9 @@ require_once 'includes/header.php';
  foreach ($reportData as $row): ?>
                             <tr>
                                 <td class="ps-4">
-                                    <span class="fw-bold text-primary"><?= htmlspecialchars($row['no_sap']) ?></span>
+                                    <span class="fw-bold text-primary"><?= htmlspecialchars($row['no_sap'] ?? '') ?></span>
                                 </td>
-                                <td class="small fw-medium text-muted"><?= htmlspecialchars($row['kod_sekolah']) ?></td>
+                                <td class="small fw-medium text-muted"><?= htmlspecialchars($row['kod_sekolah'] ?? '') ?></td>
                                 <td>
                                     <div class="small fw-bold text-dark text-uppercase"><?= htmlspecialchars($row['nama_sekolah'] ?? 'TIADA DALAM MASTER') ?></div>
                                     <div class="text-muted" style="font-size: 0.75rem;"><?= htmlspecialchars($row['no_tel'] ?? '-') ?></div>

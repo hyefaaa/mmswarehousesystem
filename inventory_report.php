@@ -319,7 +319,7 @@ require_once 'includes/header.php';
 <div class="container-fluid px-4 py-4 pb-5">
 
     <?php if (isset($db_error)): ?>
-        <div class="alert alert-danger"><i class="bi bi-exclamation-octagon me-2"></i><?= htmlspecialchars($db_error) ?></div>
+        <div class="alert alert-danger"><i class="bi bi-exclamation-octagon me-2"></i><?= htmlspecialchars($db_error ?? '') ?></div>
     <?php endif; ?>
 
     <!-- ===== SUMMARY STATS ===== -->
@@ -361,7 +361,7 @@ require_once 'includes/header.php';
                     };
                 ?>
                 <span class="cat-badge <?= $css ?>">
-                    <?= htmlspecialchars($cat['category']) ?>
+                    <?= htmlspecialchars($cat['category'] ?? '') ?>
                     <span class="badge bg-white text-dark ms-1 shadow-sm"><?= number_format($cat['total_qty']) ?> ctn</span>
                 </span>
             <?php endforeach; ?>
@@ -377,8 +377,8 @@ require_once 'includes/header.php';
                 <select name="category" class="form-select form-select-sm">
                     <option value="" data-lang="inv_filter_all">-- Semua Kategori --</option>
                     <?php foreach ($all_categories as $cat): ?>
-                        <option value="<?= htmlspecialchars($cat) ?>" <?= ($filter_category === $cat) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($cat) ?>
+                        <option value="<?= htmlspecialchars($cat ?? '') ?>" <?= ($filter_category === $cat) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat ?? '') ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -387,12 +387,12 @@ require_once 'includes/header.php';
                 <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_product">Nama Produk</label>
                 <input type="text" name="product" class="form-control form-control-sm" 
                        placeholder="Cari nama produk..." data-lang-placeholder="inv_filter_product_placeholder"
-                       value="<?= htmlspecialchars($filter_product) ?>">
+                       value="<?= htmlspecialchars($filter_product ?? '') ?>">
             </div>
             <div class="col-xl-2 col-md-4">
                 <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_col_expiry">Tarikh Luput</label>
                 <input type="date" name="expiry" class="form-control form-control-sm" 
-                       value="<?= htmlspecialchars($filter_expiry) ?>">
+                       value="<?= htmlspecialchars($filter_expiry ?? '') ?>">
             </div>
             <div class="col-xl-2 col-md-4">
                 <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_loc">Lokasi</label>
@@ -484,7 +484,7 @@ require_once 'includes/header.php';
                     <tr class="group-row">
                         <td colspan="11">
                             <i class="bi bi-folder me-2"></i>
-                            <?= htmlspecialchars($cat) ?>
+                            <?= htmlspecialchars($cat ?? '') ?>
                             &nbsp;&nbsp;—&nbsp;&nbsp;
                             Jumlah: <?= number_format($cat_totals[$cat] ?? 0) ?> ctn
                         </td>
@@ -497,7 +497,7 @@ require_once 'includes/header.php';
                                 <?= htmlspecialchars($row['product_name'] ?? '') ?>
                             </div>
                             <?php if (!empty($row['barcode'])): ?>
-                                <small class="text-muted font-monospace"><?= htmlspecialchars($row['barcode']) ?></small>
+                                <small class="text-muted font-monospace"><?= htmlspecialchars($row['barcode'] ?? '') ?></small>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -565,7 +565,7 @@ require_once 'includes/header.php';
                         </td>
                         <td>
                             <?php if (!empty($row['pallet_type'])): ?>
-                                <small class="text-muted"><?= htmlspecialchars($row['pallet_type']) ?></small>
+                                <small class="text-muted"><?= htmlspecialchars($row['pallet_type'] ?? '') ?></small>
                             <?php else: ?>
                                 <span class="text-muted small">—</span>
                             <?php endif; ?>

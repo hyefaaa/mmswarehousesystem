@@ -247,7 +247,7 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex flex-column align-items-end gap-2">
                 <span class="badge px-3 py-2 rounded-pill text-uppercase fw-bold" style="background:rgba(255,255,255,0.12);color:white;font-size:0.7rem;border:1px solid rgba(255,255,255,0.2);">
-                    <i class="bi bi-person-badge me-1"></i><?= strtoupper(htmlspecialchars($role)) ?>
+                    <i class="bi bi-person-badge me-1"></i><?= strtoupper(htmlspecialchars($role ?? '')) ?>
                 </span>
                 <a href="index.php" class="btn btn-sm btn-outline-light rounded-pill px-3">
                     <i class="bi bi-house me-1"></i>Dashboard
@@ -271,8 +271,8 @@ require_once 'includes/header.php';
                 <select id="coFilterSelect" class="form-select" onchange="processAndRender()">
                     <option value="">&mdash; Semua Kitaran &mdash;</option>
                     <?php foreach ($co_list as $co): ?>
-                    <option value="<?= htmlspecialchars($co) ?>" <?= ($co === $latest_co) ? 'selected' : '' ?>>
-                        &#x25CF; Kitaran <?= htmlspecialchars($co) ?>
+                    <option value="<?= htmlspecialchars($co ?? '') ?>" <?= ($co === $latest_co) ? 'selected' : '' ?>>
+                        &#x25CF; Kitaran <?= htmlspecialchars($co ?? '') ?>
                     </option>
                     <?php endforeach; ?>
                 </select>
@@ -280,8 +280,8 @@ require_once 'includes/header.php';
             <div class="col-md-8 d-flex align-items-center gap-2 flex-wrap">
                 <?php foreach ($co_list as $co): ?>
                 <span class="badge rounded-pill px-3 py-2 fw-bold" style="background:<?= $co===$latest_co?'#0b2147':'#f1f5f9'; ?>; color:<?= $co===$latest_co?'white':'#475569'; ?>; font-size:0.75rem; cursor:pointer;"
-                      onclick="document.getElementById('coFilterSelect').value='<?= htmlspecialchars($co) ?>'; processAndRender();">
-                    <?= htmlspecialchars($co) ?><?= $co===$latest_co?' &#x2605;':'' ?>
+                      onclick="document.getElementById('coFilterSelect').value='<?= htmlspecialchars($co ?? '') ?>'; processAndRender();">
+                    <?= htmlspecialchars($co ?? '') ?><?= $co===$latest_co?' &#x2605;':'' ?>
                 </span>
                 <?php endforeach; ?>
                 <small class="text-muted ms-1"><i class="bi bi-info-circle"></i> Default: Kitaran terkini</small>

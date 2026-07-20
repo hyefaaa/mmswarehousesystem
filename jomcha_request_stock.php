@@ -223,10 +223,10 @@ require_once 'includes/header.php';
 
 <div class="container-fluid px-4 pb-5">
     <?php if ($success_msg): ?>
-        <div class="alert alert-success border-0 shadow-sm mb-4"><i class="bi bi-check-circle-fill me-2"></i><span data-lang="<?= isset($success_lang) ? $success_lang : 'jomcha_msg_success' ?>"><?= htmlspecialchars($success_msg) ?></span></div>
+        <div class="alert alert-success border-0 shadow-sm mb-4"><i class="bi bi-check-circle-fill me-2"></i><span data-lang="<?= isset($success_lang) ? $success_lang : 'jomcha_msg_success' ?>"><?= htmlspecialchars($success_msg ?? '') ?></span></div>
     <?php endif; ?>
     <?php if ($error_msg): ?>
-        <div class="alert alert-danger border-0 shadow-sm mb-4"><i class="bi bi-exclamation-triangle-fill me-2"></i><span <?= isset($error_lang) && $error_lang ? 'data-lang="'.$error_lang.'"' : '' ?>><?= htmlspecialchars($error_msg) ?></span></div>
+        <div class="alert alert-danger border-0 shadow-sm mb-4"><i class="bi bi-exclamation-triangle-fill me-2"></i><span <?= isset($error_lang) && $error_lang ? 'data-lang="'.$error_lang.'"' : '' ?>><?= htmlspecialchars($error_msg ?? '') ?></span></div>
     <?php endif; ?>
 
     <div class="row g-4">
@@ -265,7 +265,7 @@ require_once 'includes/header.php';
                                         <?php foreach ($grouped_products as $category => $items): ?>
                                             <optgroup label="<?= htmlspecialchars(strtoupper($category)) ?>">
                                                 <?php foreach ($items as $p): ?>
-                                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?> (<?= htmlspecialchars($p['pack_size']) ?>)</option>
+                                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name'] ?? '') ?> (<?= htmlspecialchars($p['pack_size'] ?? '') ?>)</option>
                                                 <?php endforeach; ?>
                                             </optgroup>
                                         <?php endforeach; ?>
@@ -327,7 +327,7 @@ require_once 'includes/header.php';
                                     <tr class="border-bottom">
                                         <td class="ps-3 fw-bold">#<?= $req['id'] ?></td>
                                         <td><?= date('d/m/Y', strtotime($req['request_date'])) ?></td>
-                                        <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($req['requested_by']) ?></span></td>
+                                        <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($req['requested_by'] ?? '') ?></span></td>
                                         <td class="text-center fw-semibold"><?= $req['item_count'] ?> <span data-lang="lbl_product_unit">product</span></td>
                                         <td class="text-center fw-bold text-primary"><?= number_format($req['total_qty']) ?> ctn</td>
                                         <td class="text-center">
@@ -417,7 +417,7 @@ require_once 'includes/header.php';
     <?php foreach ($grouped_products as $category => $items): ?>
         <optgroup label="<?= htmlspecialchars(strtoupper($category)) ?>">
             <?php foreach ($items as $p): ?>
-                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?> (<?= htmlspecialchars($p['pack_size']) ?>)</option>
+                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name'] ?? '') ?> (<?= htmlspecialchars($p['pack_size'] ?? '') ?>)</option>
             <?php endforeach; ?>
         </optgroup>
     <?php endforeach; ?>

@@ -1,8 +1,7 @@
 <?php
 // warehouse_layout.php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
+require_once 'includes/header.php';
 require_once 'config/db.php';
 
 // Auto-migration for Warehouse Layout Grid
@@ -12,9 +11,7 @@ try {
       `zone` varchar(10) NOT NULL,
       `lane` varchar(5) NOT NULL,
       `row_num` int(11) NOT NULL,
-      `batch_id` int(11) DEFAULT NULL,
-      PRIMARY KEY (`location_code`),
-      KEY `batch_id` (`batch_id`)
+      PRIMARY KEY (`location_code`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
 
     $count = $pdo->query("SELECT COUNT(*) FROM warehouse_slots")->fetchColumn();
@@ -46,7 +43,6 @@ try {
 }
 
 $page_title = 'Warehouse Visual Layout | MMS';
-require_once 'includes/header.php';
 ?>
 
 <style>
@@ -65,7 +61,6 @@ require_once 'includes/header.php';
         overflow-x: auto;
     }
 
-    /* Section Summary Cards */
     .occupancy-card {
         background-color: var(--bg-dark);
         border: 1px solid rgba(255,255,255,0.1);
@@ -100,7 +95,6 @@ require_once 'includes/header.php';
         gap: 1.5rem;
     }
 
-    /* EXACT BLUEPRINT OFFSETS */
     .offset-com-cd { margin-top: 138px; } 
     .offset-com-ef { margin-top: 368px; } 
 
@@ -159,17 +153,11 @@ require_once 'includes/header.php';
         box-shadow: 0 6px 12px rgba(0,0,0,0.5);
     }
 
-    /* GRADIENT STATUS COLORS */
-    .slot-empty { 
-        background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); /* Red */
-    }
-    .slot-medium { 
-        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); /* Blue */
-    }
-    .slot-full { 
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%); /* Green */
-    }
+    .slot-empty { background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); }
+    .slot-medium { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
+    .slot-full { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
 
+    /* Tooltip with Scrolling and Interaction Bridge */
     .slot-tooltip {
         position: absolute;
         bottom: 120%;
@@ -177,22 +165,44 @@ require_once 'includes/header.php';
         transform: translateX(-50%);
         background-color: var(--tooltip-bg);
         color: white;
-        padding: 10px 14px;
+        padding: 12px 16px;
         border-radius: 8px;
         font-size: 0.75rem;
-        white-space: nowrap;
+        width: max-content;
+        max-width: 300px;
+        max-height: 250px;
+        overflow-y: auto;
         opacity: 0;
         visibility: hidden;
-        transition: opacity 0.2s;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        z-index: 100;
+        z-index: 1000;
         pointer-events: none;
+        transition: opacity 0.2s;
         border: 1px solid rgba(255,255,255,0.1);
+        margin-bottom: 10px;
     }
-    
-    .pallet-slot:hover .slot-tooltip {
+
+    .pallet-slot::after {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        width: 100%;
+        height: 20px;
+        background: transparent;
+    }
+
+    .pallet-slot:hover .slot-tooltip,
+    .slot-tooltip:hover {
         opacity: 1;
         visibility: visible;
+        pointer-events: auto;
+    }
+
+    .pallet-slot.tooltip-down .slot-tooltip {
+        bottom: auto;
+        top: 120%;
+        margin-bottom: 0;
+        margin-top: 10px;
     }
 
     .legend {
@@ -215,126 +225,69 @@ require_once 'includes/header.php';
         </div>
     </div>
 
-    <!-- Occupancy Summary Row -->
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="occupancy-card">
-                <div class="occupancy-title"><i class="bi bi-backpack me-2"></i>PSS (School Stocks)</div>
-                <div class="occupancy-value text-info" id="occ-PSS">Calculating...</div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="occupancy-card">
-                <div class="occupancy-title"><i class="bi bi-shop me-2"></i>COM (Commercial Stocks)</div>
-                <div class="occupancy-value text-warning" id="occ-COM">Calculating...</div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="occupancy-card">
-                <div class="occupancy-title"><i class="bi bi-box-seam me-2"></i>POW (Powder Stocks)</div>
-                <div class="occupancy-value text-success" id="occ-POW">Calculating...</div>
-            </div>
-        </div>
+        <div class="col-md-4"><div class="occupancy-card"><div class="occupancy-title">PSS (School Stocks)</div><div class="occupancy-value text-info" id="occ-PSS">...</div></div></div>
+        <div class="col-md-4"><div class="occupancy-card"><div class="occupancy-title">COM (Commercial Stocks)</div><div class="occupancy-value text-warning" id="occ-COM">...</div></div></div>
+        <div class="col-md-4"><div class="occupancy-card"><div class="occupancy-title">POW (Powder Stocks)</div><div class="occupancy-value text-success" id="occ-POW">...</div></div></div>
     </div>
 
     <div class="layout-container shadow-lg">
         <div class="warehouse-floor">
-            <!-- Column 1: PSS A-C -->
-            <div class="layout-col">
-                <div class="block-title">PSS-A | PSS-B | PSS-C</div>
-                <div class="slot-grid grid-3-col" id="grid-PSS_ABC"></div>
-            </div>
-
-            <!-- Column 2: PSS D-F -->
-            <div class="layout-col">
-                <div class="block-title">PSS-D | PSS-E | PSS-F</div>
-                <div class="slot-grid grid-3-col" id="grid-PSS_DEF"></div>
-            </div>
-
+            <div class="layout-col"><div class="block-title">PSS-A | PSS-B | PSS-C</div><div class="slot-grid grid-3-col" id="grid-PSS_ABC"></div></div>
+            <div class="layout-col"><div class="block-title">PSS-D | PSS-E | PSS-F</div><div class="slot-grid grid-3-col" id="grid-PSS_DEF"></div></div>
             <div class="wall-divider"></div>
-
-            <!-- Column 3: COM A-B & POW -->
             <div class="layout-col">
-                <div class="block-container">
-                    <div class="block-title">COM-A | COM-B</div>
-                    <div class="slot-grid grid-2-col" id="grid-COM_AB"></div>
-                </div>
-                <div class="block-container" style="margin-top: 0.5rem;">
-                    <div class="block-title">POW-A | POW-B | POW-C</div>
-                    <div class="slot-grid grid-3-col" id="grid-POW_ABC"></div>
-                </div>
+                <div class="block-container"><div class="block-title">COM-A | COM-B</div><div class="slot-grid grid-2-col" id="grid-COM_AB"></div></div>
+                <div class="block-container" style="margin-top: 0.5rem;"><div class="block-title">POW-A | POW-B | POW-C</div><div class="slot-grid grid-3-col" id="grid-POW_ABC"></div></div>
             </div>
-
-            <!-- Column 4: COM C-D -->
-            <div class="layout-col offset-com-cd">
-                <div class="block-title">COM-C | COM-D</div>
-                <div class="slot-grid grid-2-col" id="grid-COM_CD"></div>
-            </div>
-
-            <!-- Column 5: COM E-F -->
-            <div class="layout-col offset-com-ef">
-                <div class="block-title">COM-E | COM-F</div>
-                <div class="slot-grid grid-2-col" id="grid-COM_EF"></div>
-            </div>
+            <div class="layout-col offset-com-cd"><div class="block-title">COM-C | COM-D</div><div class="slot-grid grid-2-col" id="grid-COM_CD"></div></div>
+            <div class="layout-col offset-com-ef"><div class="block-title">COM-E | COM-F</div><div class="slot-grid grid-2-col" id="grid-COM_EF"></div></div>
         </div>
-        
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-box slot-empty"></div> Empty (0)
+    </div>
+</div>
+
+<!-- Assignment Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-box-arrow-in-down me-2"></i>Assign Pallet Slot</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="legend-item">
-                <div class="legend-box slot-medium"></div> Partial Load
+            <div class="modal-body">
+                <form id="assignForm">
+                    <input type="hidden" id="inputLocationCode" name="location_code">
+                    <div class="text-center mb-3"><span class="text-muted small text-uppercase">Selected Location</span><h2 class="fw-900 text-info mb-0" id="displayLocationCode"></h2></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase">Select Inventory Batch(es)</label>
+                        <select class="form-select fw-bold" id="inputBatchId" name="batch_ids[]" multiple style="height: 180px;"></select>
+                    </div>
+                </form>
             </div>
-            <div class="legend-item">
-                <div class="legend-box slot-full"></div> Full Pallet
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success px-4 fw-bold" onclick="saveAssignment()">Save Assignment</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    fetchWarehouseData();
-    setInterval(fetchWarehouseData, 30000); 
-});
+let assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
+document.addEventListener('DOMContentLoaded', () => { fetchWarehouseData(); setInterval(fetchWarehouseData, 30000); });
 
 function fetchWarehouseData() {
     fetch('api/get_warehouse_grid.php')
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') {
-                renderWarehouseGrid(data.data);
-                calculateOccupancy(data.data);
-            }
-        })
-        .catch(error => console.error('Error fetching grid:', error));
+        .then(res => res.json())
+        .then(data => { if(data.status === 'success') { renderWarehouseGrid(data.data); calculateOccupancy(data.data); } });
 }
 
-// Function to calculate and update the occupancy stats
 function calculateOccupancy(slots) {
-    const stats = {
-        'PSS': { occupied: 0, total: 0 },
-        'COM': { occupied: 0, total: 0 },
-        'POW': { occupied: 0, total: 0 }
-    };
-
-    slots.forEach(slot => {
-        if (stats[slot.zone] !== undefined) {
-            stats[slot.zone].total++;
-            if (parseInt(slot.quantity) > 0) {
-                stats[slot.zone].occupied++;
-            }
-        }
-    });
-
-    for (const zone in stats) {
-        const data = stats[zone];
-        const percentage = data.total > 0 ? Math.round((data.occupied / data.total) * 100) : 0;
-        
-        const el = document.getElementById(`occ-${zone}`);
-        if (el) {
-            el.innerText = `(${data.occupied}/${data.total} - ${percentage}%)`;
-        }
+    const stats = { 'PSS': { o: 0, t: 0 }, 'COM': { o: 0, t: 0 }, 'POW': { o: 0, t: 0 } };
+    slots.forEach(s => { if(stats[s.zone]) { stats[s.zone].t++; if(s.items?.length > 0) stats[s.zone].o++; } });
+    for (const z in stats) {
+        const el = document.getElementById(`occ-${z}`);
+        if(el) el.innerText = `(${stats[z].o}/${stats[z].t} - ${stats[z].t > 0 ? Math.round((stats[z].o/stats[z].t)*100) : 0}%)`;
     }
 }
 
@@ -349,62 +302,57 @@ function renderWarehouseGrid(slots) {
     };
 
     for (const [key, config] of Object.entries(blocks)) {
-        let blockSlots = slots.filter(config.filter);
-        
-        blockSlots.sort((a, b) => {
-            if (a.row_num !== b.row_num) {
-                return parseInt(a.row_num) - parseInt(b.row_num);
-            }
-            return a.lane.localeCompare(b.lane);
-        });
-
-        let floorHtml = '';
-
+        let blockSlots = slots.filter(config.filter).sort((a,b) => parseInt(a.row_num)-parseInt(b.row_num) || a.lane.localeCompare(b.lane));
+        let html = '';
         blockSlots.forEach(slot => {
-            // Calculate actual Cartons using the pack_size
-            let rawQty = parseInt(slot.quantity) || 0; 
-            let packSize = parseInt(slot.pack_size) || 1; // Default to 1 to prevent division by zero
-            let ctnQty = Math.floor(rawQty / packSize);
-            let capacity = parseInt(slot.pallet_capacity) || 0;
-            
-            // Determine Color Status based on Cartons (CTN) vs Capacity
-            let statusClass = 'slot-empty';
-            if (rawQty > 0) {
-                if (capacity > 0 && ctnQty >= capacity) {
-                    statusClass = 'slot-full'; // Green
-                } else {
-                    statusClass = 'slot-medium'; // Blue
-                }
+            let totalCtn = 0, tooltipList = '', assignedIds = [];
+            if(slot.items?.length > 0) {
+                slot.items.forEach(item => {
+                    totalCtn += parseInt(item.quantity) || 0;
+                    assignedIds.push(item.batch_id);
+                    tooltipList += `<div style="margin-bottom:8px; border-bottom:1px solid #334; padding-bottom:4px;">
+                        <div style="color:#38bdf8; font-weight:800;">${item.sku_name}</div>
+                        <div>Qty: ${parseInt(item.quantity) || 0} CTN | Pallet: ${item.pallet_type||'None'}</div>
+                        <div>Batch: #${item.batch_no}</div>
+                    </div>`;
+                });
             }
-
-            const shortLabel = slot.zone === 'POW' ? slot.lane : slot.lane + slot.row_num;
-            
-            let timeStr = '';
-            if(rawQty > 0 && slot.received_date_timestamp) {
-                const dateObj = new Date(slot.received_date_timestamp);
-                timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            }
-
-            const tooltipContent = (rawQty > 0) 
-                ? `<strong>${slot.location_code} #${slot.batch_no || 'N/A'}</strong><br>
-                   ${slot.sku_name || 'Unknown Item'}<br>
-                   Qty: ${ctnQty} / ${capacity || '?'} CTN<br>
-                   <small>Received ${timeStr}</small>` 
-                : `<strong>${slot.location_code}</strong><br>Empty`;
-
-            floorHtml += `
-                <div class="pallet-slot ${statusClass}" id="slot-${slot.location_code}">
-                    ${shortLabel}
-                    <div class="slot-tooltip">${tooltipContent}</div>
-                </div>
-            `;
+            let status = totalCtn > 0 ? (totalCtn >= (parseInt(slot.items?.[0]?.pallet_capacity)||0) ? 'slot-full' : 'slot-medium') : 'slot-empty';
+            html += `<div class="pallet-slot ${status} ${(parseInt(slot.row_num)<=2||slot.zone==='POW')?'tooltip-down':''}" 
+                     onclick="openAssignModal('${slot.location_code}', ${JSON.stringify(assignedIds).replace(/"/g, '&quot;')})">
+                     ${slot.zone==='POW'?slot.lane:slot.lane+slot.row_num}
+                     <div class="slot-tooltip">
+                        <div style="position:sticky; top:0; background:var(--tooltip-bg); font-weight:800; margin-bottom:5px;">${slot.location_code}</div>
+                        ${tooltipList||'Empty Slot'}
+                     </div>
+                     </div>`;
         });
-
-        const container = document.getElementById(config.id);
-        if(container) {
-            container.innerHTML = floorHtml;
-        }
+        document.getElementById(config.id).innerHTML = html;
     }
+}
+
+function openAssignModal(locationCode, currentBatchIds) {
+    document.getElementById('displayLocationCode').innerText = locationCode;
+    document.getElementById('inputLocationCode').value = locationCode;
+    const selectEl = document.getElementById('inputBatchId');
+    selectEl.innerHTML = '<option value="">-- CLEAR SLOT (Empty) --</option>';
+    fetch('api/get_available_batches.php')
+        .then(res => res.json())
+        .then(data => {
+            data.data.forEach(b => {
+                const isAssigned = (b.assigned_location && b.assigned_location !== locationCode);
+                selectEl.innerHTML += `<option value="${b.batch_id}" ${currentBatchIds.includes(parseInt(b.batch_id))?'selected':''}>
+                    [Batch ${b.batch_no}] ${b.product_name} (${parseInt(b.qty_on_hand) || 0} CTN) ${isAssigned?'(Assigned in '+b.assigned_location+')':''}
+                </option>`;
+            });
+            assignModal.show();
+        });
+}
+
+function saveAssignment() {
+    fetch('api/assign_pallet_slot.php', { method: 'POST', body: new FormData(document.getElementById('assignForm')) })
+    .then(res => res.json())
+    .then(data => { if(data.status === 'success') { assignModal.hide(); fetchWarehouseData(); } else alert(data.message); });
 }
 </script>
 

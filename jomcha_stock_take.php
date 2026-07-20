@@ -406,9 +406,9 @@ require_once 'includes/header.php';
         $display_msg = $_GET['msg'] ?? $msg; 
         $display_type = $_GET['type'] ?? $msg_type;
         ?>
-        <div class="alert alert-<?= htmlspecialchars($display_type) ?> border-0 shadow-sm mb-4 alert-dismissible fade show" role="alert">
+        <div class="alert alert-<?= htmlspecialchars($display_type ?? '') ?> border-0 shadow-sm mb-4 alert-dismissible fade show" role="alert">
             <i class="bi <?= $display_type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' ?> me-2"></i>
-            <?= htmlspecialchars($display_msg) ?>
+            <?= htmlspecialchars($display_msg ?? '') ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
@@ -480,7 +480,7 @@ require_once 'includes/header.php';
                         foreach ($cats as $cat): 
                             if (empty(trim($cat))) continue;
                         ?>
-                            <option value="<?= htmlspecialchars(strtolower(trim($cat))) ?>"><?= htmlspecialchars($cat) ?></option>
+                            <option value="<?= htmlspecialchars(strtolower(trim($cat))) ?>"><?= htmlspecialchars($cat ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -517,7 +517,7 @@ require_once 'includes/header.php';
                                 ?>
                                     <tr class="stk-row-item border-bottom" 
                                          data-id="<?= $stk['id'] ?>"
-                                         data-name="<?= strtolower(htmlspecialchars($stk['name'])) ?>"
+                                         data-name="<?= strtolower(htmlspecialchars($stk['name'] ?? '')) ?>"
                                          data-category="<?= strtolower(htmlspecialchars(trim($stk['category']))) ?>"
                                          data-baki="<?= $stk['baki'] ?>"
                                          data-mandatory="<?= $is_mandatory ? 'true' : 'false' ?>">
@@ -526,8 +526,8 @@ require_once 'includes/header.php';
                                         <td class="ps-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div>
-                                                    <span class="badge bg-secondary-subtle text-secondary small mb-1"><?= htmlspecialchars($stk['category']) ?></span>
-                                                    <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['name']) ?></h6>
+                                                    <span class="badge bg-secondary-subtle text-secondary small mb-1"><?= htmlspecialchars($stk['category'] ?? '') ?></span>
+                                                    <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['name'] ?? '') ?></h6>
                                                 </div>
                                             </div>
                                         </td>
@@ -557,7 +557,7 @@ require_once 'includes/header.php';
                                         <td class="pe-3 text-center">
                                             <button type="button" class="btn btn-purple btn-sm fw-bold px-3 py-2 rounded-pill shadow-sm text-white" 
                                                     style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border:none;"
-                                                    onclick="bukaModalKiraan(<?= $stk['id'] ?>, '<?= htmlspecialchars($stk['name']) ?>', <?= $cs ?>, <?= $stk['baki'] ?>, '<?= htmlspecialchars($stk['category']) ?>')">
+                                                    onclick="bukaModalKiraan(<?= $stk['id'] ?>, '<?= htmlspecialchars($stk['name'] ?? '') ?>', <?= $cs ?>, <?= $stk['baki'] ?>, '<?= htmlspecialchars($stk['category'] ?? '') ?>')">
                                                 <i class="bi bi-pencil-square"></i> <span data-lang="jomcha_st_btn_count">Kira</span>
                                             </button>
                                         </td>
@@ -664,8 +664,8 @@ require_once 'includes/header.php';
                             ?>
                                 <tr class="<?= $row_class ?> border-bottom">
                                     <td class="ps-3">
-                                        <strong><?= htmlspecialchars($b['p_name']) ?></strong>
-                                        <div class="small text-muted"><?= htmlspecialchars($b['category']) ?></div>
+                                        <strong><?= htmlspecialchars($b['p_name'] ?? '') ?></strong>
+                                        <div class="small text-muted"><?= htmlspecialchars($b['category'] ?? '') ?></div>
                                     </td>
                                     <td class="text-center"><code class="fw-bold"><?= htmlspecialchars($b['batch'] ?? '-') ?></code></td>
                                     <td class="text-center fw-bold"><?= $b['expiry_date'] ? date('d/m/Y', strtotime($b['expiry_date'])) : '-' ?></td>
