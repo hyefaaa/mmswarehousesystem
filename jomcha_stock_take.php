@@ -240,9 +240,23 @@ if ($lt && $lt['last_date']) {
     $days_since_last_take = (new DateTime($lt['last_date']))->diff(new DateTime())->days;
 }
 
+// Check permitted_location & permitted_sub_location columns on products table
+$perm_loc_select = "'' as permitted_location, '' as permitted_sub_location,";
+try {
+    $c1 = $pdo->query("SHOW COLUMNS FROM products LIKE 'permitted_location'")->fetch();
+    $c2 = $pdo->query("SHOW COLUMNS FROM products LIKE 'permitted_sub_location'")->fetch();
+    if ($c1 && $c2) {
+        $perm_loc_select = "p.permitted_location, p.permitted_sub_location,";
+    } elseif ($c1) {
+        $perm_loc_select = "p.permitted_location, '' as permitted_sub_location,";
+    }
+} catch (Exception $ex) {
+    $perm_loc_select = "'' as permitted_location, '' as permitted_sub_location,";
+}
+
 // Active stocks with balance calculation
-$jomcha_stocks = $pdo->query("
-    SELECT p.id, p.name, p.category, p.pack_size, p.uom,
+$stocks_raw = $pdo->query("
+    SELECT p.id, p.name, p.category, {$perm_loc_select} p.pack_size, p.uom,
             (SELECT COALESCE(SUM(oi.qty * p2.pack_size), 0)
              FROM outbound_items oi
              JOIN outbound_logs ol ON oi.outbound_id = ol.id
@@ -252,6 +266,62 @@ $jomcha_stocks = $pdo->query("
     WHERE p.is_active = 1
     ORDER BY baki DESC, p.name ASC
 ")->fetchAll();
+
+// Cache category-level locations from existing products to support automatic inheritance
+$category_locations = [];
+try {
+    if ($c1 && $c2) {
+        $cat_locs = $pdo->query("
+            SELECT category, permitted_location, permitted_sub_location 
+            FROM products 
+            WHERE (permitted_location IS NOT NULL AND permitted_location != '') 
+               OR (permitted_sub_location IS NOT NULL AND permitted_sub_location != '')
+        ")->fetchAll();
+        foreach ($cat_locs as $cl) {
+            $cat = trim(strtolower($cl['category']));
+            if (!isset($category_locations[$cat])) {
+                $category_locations[$cat] = [
+                    'loc' => $cl['permitted_location'],
+                    'sub' => $cl['permitted_sub_location']
+                ];
+            }
+        }
+    }
+} catch (Exception $ex) {}
+
+$jomcha_stocks = [];
+foreach ($stocks_raw as $stk) {
+    $stk_loc = $stk['permitted_location'] ?? '';
+    $stk_sub_loc = $stk['permitted_sub_location'] ?? '';
+    
+    if (empty($stk_loc) && empty($stk_sub_loc)) {
+        // 1. Try to inherit from category configuration
+        $cat = trim(strtolower($stk['category']));
+        if (isset($category_locations[$cat])) {
+            $stk_loc = $category_locations[$cat]['loc'];
+            $stk_sub_loc = $category_locations[$cat]['sub'];
+        }
+    }
+    
+    // 2. Fall back to smart defaults if still empty (consistent with product_management.php)
+    if (empty($stk_loc) && empty($stk_sub_loc)) {
+        $cat_u = strtoupper(trim($stk['category']));
+        if (strpos($cat_u, 'BEEF') !== false || strpos($cat_u, 'MEAT') !== false || strpos($cat_u, 'FROZEN') !== false || strpos($cat_u, 'ICE') !== false) {
+            $stk_loc = ''; // Allow all areas by default
+            $stk_sub_loc = 'Freezer';
+        } elseif (strpos($cat_u, 'CHILLED') !== false || strpos($cat_u, 'MILK') !== false || strpos($cat_u, 'DAIRY') !== false || strpos($cat_u, 'PST') !== false) {
+            $stk_loc = ''; // Allow all areas by default
+            $stk_sub_loc = 'Chiller';
+        } else {
+            $stk_loc = ''; // Allow all areas by default
+            $stk_sub_loc = 'Rack, Pallet';
+        }
+    }
+    
+    $stk['permitted_location'] = $stk_loc;
+    $stk['permitted_sub_location'] = $stk_sub_loc;
+    $jomcha_stocks[] = $stk;
+}
 
 // Expiry Monitoring
 $all_expiry_batches = [];
@@ -557,7 +627,7 @@ require_once 'includes/header.php';
                                         <td class="pe-3 text-center">
                                             <button type="button" class="btn btn-purple btn-sm fw-bold px-3 py-2 rounded-pill shadow-sm text-white" 
                                                     style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border:none;"
-                                                    onclick="bukaModalKiraan(<?= $stk['id'] ?>, '<?= htmlspecialchars($stk['name'] ?? '') ?>', <?= $cs ?>, <?= $stk['baki'] ?>, '<?= htmlspecialchars($stk['category'] ?? '') ?>')">
+                                                    onclick="bukaModalKiraan(<?= $stk['id'] ?>, '<?= htmlspecialchars(addslashes($stk['name'] ?? '')) ?>', <?= $cs ?>, <?= $stk['baki'] ?>, '<?= htmlspecialchars(addslashes($stk['category'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($stk['permitted_location'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($stk['permitted_sub_location'] ?? '')) ?>')">
                                                 <i class="bi bi-pencil-square"></i> <span data-lang="jomcha_st_btn_count">Kira</span>
                                             </button>
                                         </td>
@@ -1028,7 +1098,7 @@ require_once 'includes/header.php';
     ];
 
     // Buka Modal & Load values
-    function bukaModalKiraan(productId, productName, packSize, expected, category) {
+    function bukaModalKiraan(productId, productName, packSize, expected, category, customPermittedLocation = '', customPermittedSubLocation = '') {
         currentProductId = productId;
         currentPackSize = packSize;
         currentExpected = expected;
@@ -1051,16 +1121,36 @@ require_once 'includes/header.php';
             document.getElementById('modal_' + f).value = hiddenVal;
         });
 
-        // Dynamic Storage Logic: Hide/Show sub-locations based on product category
-        category = (category || '').toLowerCase().trim();
-        let allowedStorage = ['rack', 'pallet', 'chiller', 'freezer']; // Default: allow all
-        
-        if (['powder', 'uht', 'syrup', 'topping', 'packaging', 'cups', 'straws'].includes(category)) {
-            allowedStorage = ['rack', 'pallet'];
-        } else if (['pst', 'pasteurised', 'butter', 'cheese', 'yogurt', 'cooking', 'cooking cream'].includes(category)) {
-            allowedStorage = ['chiller'];
-        } else if (['ic', 'icecream', 'freezer', 'frozen', 'beef'].includes(category)) {
-            allowedStorage = ['freezer'];
+        // Dynamic Storage Logic: Hide/Show sub-locations based on permitted location & sub-location or category default
+        let allowedStorage = [];
+        let allowedAreas = [];
+
+        if (customPermittedLocation && customPermittedLocation.trim() !== '') {
+            let rawLocs = customPermittedLocation.toLowerCase().split(',').map(s => s.trim());
+            rawLocs.forEach(rawLoc => {
+                if (rawLoc.includes('jcb') || rawLoc.includes('jc barn') || rawLoc.includes('barn')) allowedAreas.push('jcb');
+                if (rawLoc.includes('mms') || rawLoc.includes('kedai') || rawLoc.includes('jomcha')) allowedAreas.push('mms');
+                if (rawLoc.includes('sa') || rawLoc.includes('store') || rawLoc.includes('store area')) allowedAreas.push('sa');
+            });
+        }
+        if (allowedAreas.length === 0) {
+            allowedAreas = ['jcb', 'mms', 'sa'];
+        }
+
+        if (customPermittedSubLocation && customPermittedSubLocation.trim() !== '') {
+            allowedStorage = customPermittedSubLocation.toLowerCase().split(',').map(s => s.trim());
+        } else {
+            category = (category || '').toLowerCase().trim();
+            if (['powder', 'uht', 'syrup', 'topping', 'packaging', 'cups', 'straws', 'pss', 'com', 'pow'].some(k => category.includes(k))) {
+                allowedStorage = ['rack', 'pallet'];
+            } else if (['pst', 'pasteurised', 'butter', 'cheese', 'yogurt', 'cooking', 'chilled', 'milk'].some(k => category.includes(k))) {
+                allowedStorage = ['chiller'];
+            } else if (['ic', 'icecream', 'freezer', 'frozen', 'beef', 'meat'].some(k => category.includes(k))) {
+                allowedStorage = ['freezer'];
+                allowedAreas = ['mms', 'sa'];
+            } else {
+                allowedStorage = ['rack', 'pallet', 'chiller', 'freezer'];
+            }
         }
 
         locationFields.forEach(f => {
@@ -1070,14 +1160,36 @@ require_once 'includes/header.php';
             // Find parent grid column
             let cellCol = inputEl.closest('.col-md-4') || inputEl.closest('.col-md-6');
             
+            // Determine Area prefix (jcb, mms, sa)
+            let fieldArea = 'jcb';
+            if (f.startsWith('mms_')) fieldArea = 'mms';
+            else if (f.startsWith('sa_')) fieldArea = 'sa';
+
             // Determine type of this field
             let fieldType = 'rack';
             if (f.includes('chiller')) fieldType = 'chiller';
             else if (f.includes('freezer')) fieldType = 'freezer';
             else if (f.includes('pallet')) fieldType = 'pallet';
             
-            // Check compatibility
-            if (allowedStorage.includes(fieldType)) {
+            // Check compatibility with allowed areas and storage types
+            let areaMatch = allowedAreas.includes(fieldArea);
+            
+            // Extract field sub-code (e.g., chiller 1, chiller 2, freezer meat, freezer ice cream, pallet 1, rack)
+            let fieldSubCode = f.replace('jcb_', '').replace('mms_', '').replace('sa_', '').replace('_ctn', '').replace('_pcs', '').replace(/_/g, ' ');
+
+            let typeMatch = allowedStorage.length === 0 || allowedStorage.some(a => {
+                let cleanA = a.replace('>', ' ').replace('(', ' ').replace(')', ' ').replace('-', ' ').trim();
+                return cleanA.includes(fieldArea) || 
+                       cleanA.includes(fieldType) || 
+                       fieldType.includes(cleanA) ||
+                       cleanA.includes(fieldSubCode) ||
+                       fieldSubCode.includes(cleanA) ||
+                       (cleanA.includes('jcb') && fieldArea === 'jcb') ||
+                       (cleanA.includes('mms') && fieldArea === 'mms') ||
+                       (cleanA.includes('sa') && fieldArea === 'sa');
+            });
+            
+            if (areaMatch && typeMatch) {
                 // Compatible: show
                 if (cellCol) cellCol.style.display = '';
             } else {
@@ -1087,24 +1199,33 @@ require_once 'includes/header.php';
             }
         });
 
-        // Show/Hide zone tabs depending on whether they contain any allowed fields
-        let hasJcb = allowedStorage.includes('chiller') || allowedStorage.includes('rack');
-        let hasMms = allowedStorage.includes('rack') || allowedStorage.includes('chiller') || allowedStorage.includes('freezer');
-        let hasSa = allowedStorage.includes('rack') || allowedStorage.includes('pallet') || allowedStorage.includes('chiller') || allowedStorage.includes('freezer');
+        // Show/Hide zone tabs depending on whether they contain any visible fields
+        let hasJcbVisible = false, hasMmsVisible = false, hasSaVisible = false;
+        locationFields.forEach(f => {
+            let el = document.getElementById('modal_' + f);
+            if (el) {
+                let cellCol = el.closest('.col-md-4') || el.closest('.col-md-6');
+                if (cellCol && cellCol.style.display !== 'none') {
+                    if (f.startsWith('jcb_')) hasJcbVisible = true;
+                    if (f.startsWith('mms_')) hasMmsVisible = true;
+                    if (f.startsWith('sa_')) hasSaVisible = true;
+                }
+            }
+        });
         
         let tabJcb = document.getElementById('modal-jcb-tab');
         let tabMms = document.getElementById('modal-mms-tab');
         let tabSa = document.getElementById('modal-sa-tab');
         
-        if (tabJcb) tabJcb.style.display = hasJcb ? '' : 'none';
-        if (tabMms) tabMms.style.display = hasMms ? '' : 'none';
-        if (tabSa) tabSa.style.display = hasSa ? '' : 'none';
+        if (tabJcb) tabJcb.style.display = hasJcbVisible ? '' : 'none';
+        if (tabMms) tabMms.style.display = hasMmsVisible ? '' : 'none';
+        if (tabSa) tabSa.style.display = hasSaVisible ? '' : 'none';
 
         // Auto select first visible tab
         let firstVisibleTab = null;
-        if (hasJcb) firstVisibleTab = 'modal-jcb-tab';
-        else if (hasMms) firstVisibleTab = 'modal-mms-tab';
-        else if (hasSa) firstVisibleTab = 'modal-sa-tab';
+        if (hasJcbVisible) firstVisibleTab = 'modal-jcb-tab';
+        else if (hasMmsVisible) firstVisibleTab = 'modal-mms-tab';
+        else if (hasSaVisible) firstVisibleTab = 'modal-sa-tab';
         
         if (firstVisibleTab) {
             let targetTab = new bootstrap.Tab(document.getElementById(firstVisibleTab));
