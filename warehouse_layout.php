@@ -313,7 +313,7 @@ function renderWarehouseGrid(slots) {
                     tooltipList += `<div style="margin-bottom:8px; border-bottom:1px solid #334; padding-bottom:4px;">
                         <div style="color:#38bdf8; font-weight:800;">${item.sku_name}</div>
                         <div>Qty: ${parseInt(item.quantity) || 0} CTN | Pallet: ${item.pallet_type||'None'}</div>
-                        <div>Batch: #${item.batch_no}</div>
+                        <div>Batch: <a href="javascript:void(0)" onclick="event.stopPropagation(); showBatchTrail('${item.batch_no}', ${item.product_id})" style="color: #60a5fa; font-weight: bold; text-decoration: underline;">#${item.batch_no}</a></div>
                     </div>`;
                 });
             }

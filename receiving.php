@@ -240,6 +240,12 @@ require_once 'includes/header.php';
                 </label>
                 <input type="text" name="lot_no" id="lot_no" class="form-control border-primary text-uppercase fw-bold" placeholder="e.g. 260831-MFB010-PP003" data-lang-placeholder="recv_lot_placeholder" oninput="parseLotNo()" autocomplete="off">
                 <div class="form-text small text-muted" data-lang="recv_lot_help">Mengisi butiran di bawah secara automatik daripada lot/QR barcode.</div>
+                <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" id="hardwareScannerMode" checked>
+                    <label class="form-check-label small fw-bold text-muted" for="hardwareScannerMode">
+                        🎯 Hardware Scanner Mode (Auto-Submit)
+                    </label>
+                </div>
             </div>
 
             <div class="row g-3 mb-3">
@@ -324,6 +330,18 @@ require_once 'includes/header.php';
         // Kawalan kamera
         document.getElementById('cameraModal').addEventListener('shown.bs.modal', startScanner);
         document.getElementById('cameraModal').addEventListener('hidden.bs.modal', stopScanner);
+
+        // Hardware scanner listener
+        document.getElementById('lot_no').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Stop standard form submission
+                clearTimeout(parseTimeout);
+                const lotString = this.value.trim();
+                if (lotString.length >= 5) {
+                    executeParseLotNo(lotString, true);
+                }
+            }
+        });
     });
 
     function filterProducts() {
@@ -353,8 +371,13 @@ require_once 'includes/header.php';
 
         clearTimeout(parseTimeout);
         parseTimeout = setTimeout(() => {
-            const catVal = document.getElementById('category').value;
-            fetch('ajax_parse_lot.php?lot_no=' + encodeURIComponent(lotString) + '&category=' + encodeURIComponent(catVal))
+            executeParseLotNo(lotString, false);
+        }, 300);
+    }
+
+    function executeParseLotNo(lotString, triggerSubmit) {
+        const catVal = document.getElementById('category').value;
+        return fetch('ajax_parse_lot.php?lot_no=' + encodeURIComponent(lotString) + '&category=' + encodeURIComponent(catVal))
             .then(res => {
                 if (!res.ok) throw new Error('Network response was not ok');
                 return res.text();
@@ -520,10 +543,18 @@ require_once 'includes/header.php';
                         }
                         document.querySelector('input[name="qty"]').value = finalQty;
                     }
+                    
+                    // Hardware Auto-submit trigger
+                    const scannerMode = document.getElementById('hardwareScannerMode');
+                    if (triggerSubmit && scannerMode && scannerMode.checked) {
+                        // Small timeout to allow input values to propagate to DOM properly
+                        setTimeout(() => {
+                            document.getElementById('singleReceiveForm').submit();
+                        }, 200);
+                    }
                 }
             })
             .catch(err => console.error('Error parsing QR:', err));
-        }, 300);
     }
 
     function calculateCtn() {

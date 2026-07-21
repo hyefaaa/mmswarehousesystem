@@ -165,11 +165,11 @@ try {
     }
 
     foreach ($items as $item) {
-        $prod_id   = $item['product_id'];
-        $batch     = $item['batch_no'] ?? $item['batch'] ?? '';
+        $prod_id   = $item['product_id'] ?? null;
+        $batch     = $item['batch'] ?? $item['batch_no'] ?? '';
         $qty       = $item['qty'] ?? 0;
         $prod_time = !empty($item['production_time']) ? $item['production_time'] : null;
-        $expiry    = convertDate($item['expiry_date'] ?? $item['expiry'] ?? '');
+        $expiry    = convertDate($item['expiry'] ?? $item['expiry_date'] ?? '');
         
         $raw_p_type = strtolower($item['pallet_type'] ?? $item['p_type'] ?? 'none');
         $p_type     = $pallet_map[$raw_p_type] ?? $raw_p_type;

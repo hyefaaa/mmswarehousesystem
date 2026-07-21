@@ -14,6 +14,7 @@ try {
             sa.location_code,
             sa.batch_id,
             b.batch_no,
+            b.product_id AS product_id,
             b.qty_on_hand AS quantity,
             p.name AS sku_name,
             p.pallet_capacity,

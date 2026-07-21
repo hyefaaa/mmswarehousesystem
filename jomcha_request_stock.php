@@ -445,6 +445,16 @@ require_once 'includes/header.php';
 
     $(document).ready(function() {
         initSelect2();
+        
+        // Auto-open review or details modal if specified in URL query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const reviewId = urlParams.get('review');
+        const viewId = urlParams.get('view');
+        if (reviewId) {
+            reviewRequest(parseInt(reviewId));
+        } else if (viewId) {
+            viewDetails(parseInt(viewId));
+        }
     });
 
     function addRequestRow() {

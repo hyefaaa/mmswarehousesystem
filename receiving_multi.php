@@ -182,6 +182,23 @@ require_once 'includes/header.php';
         document.getElementById('cameraModal').addEventListener('shown.bs.modal', startScanner);
         document.getElementById('cameraModal').addEventListener('hidden.bs.modal', stopScanner);
         
+        // Keydown delegator for hardware scanners
+        const itemsBody = document.getElementById('itemsBody');
+        if (itemsBody) {
+            itemsBody.addEventListener('keydown', function(e) {
+                if (e.target.classList.contains('qr-input') && e.key === 'Enter') {
+                    e.preventDefault(); // Prevent submit
+                    const input = e.target;
+                    const id = input.id.replace('scan_input_', '');
+                    clearTimeout(parseTimeout[id]);
+                    const lotString = input.value.trim();
+                    if (lotString.length >= 5) {
+                        executeRowParse(input, lotString, id);
+                    }
+                }
+            });
+        }
+
         addRow();
     });
 
@@ -298,8 +315,13 @@ require_once 'includes/header.php';
 
         clearTimeout(parseTimeout[id]);
         parseTimeout[id] = setTimeout(() => {
-            const catVal = document.getElementById('main_category').value;
-            fetch('ajax_parse_lot.php?lot_no=' + encodeURIComponent(lotString) + '&category=' + encodeURIComponent(catVal))
+            executeRowParse(input, lotString, id);
+        }, 500);
+    }
+
+    function executeRowParse(input, lotString, id) {
+        const catVal = document.getElementById('main_category').value;
+        return fetch('ajax_parse_lot.php?lot_no=' + encodeURIComponent(lotString) + '&category=' + encodeURIComponent(catVal))
             .then(res => {
                 if (!res.ok) throw new Error('Network response was not ok');
                 return res.text();
@@ -472,7 +494,6 @@ require_once 'includes/header.php';
             console.error('QR Parsing Error:', err);
             input.style.borderColor = "#ef4444";
         });
-        }, 500);
     }
 
     function updateHeaderTally() {

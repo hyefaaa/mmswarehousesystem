@@ -511,7 +511,15 @@ require_once 'includes/header.php';
                             </span>
                         </td>
                         <td class="font-monospace small text-muted"><?= htmlspecialchars($row['lot_no_raw'] ?? '—') ?></td>
-                        <td class="font-monospace small"><?= htmlspecialchars($row['batch_no'] ?? '—') ?></td>
+                        <td class="font-monospace small">
+                            <?php if (!empty($row['batch_no']) && $row['batch_no'] !== '—'): ?>
+                                <a href="javascript:void(0)" class="text-primary fw-bold" onclick="showBatchTrail('<?= htmlspecialchars($row['batch_no']) ?>', <?= (int)$row['product_id'] ?>)">
+                                    <?= htmlspecialchars($row['batch_no']) ?>
+                                </a>
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php
                                 if (!empty($row['expiry_date'])) {
