@@ -47,3 +47,61 @@ The system runs on a modern, high-performance web stack optimized for local serv
 * **Backend Engine**: PHP 8.x (utilizing secure PDO drivers to protect against SQL Injection).
 * **Database Store**: MariaDB / MySQL (enforced with foreign key indexes and SQL transactional integrity).
 * **Frontend Design**: Responsive HTML5, customized **Vanilla CSS** with a modern dark-mode header, Bootstrap 5, **jQuery** (for real-time quota adjustments), **Select2** (searchable dropdown fields), **Flatpickr** (modern date pickers), and **SheetJS (XLSX)** for client-side Excel imports.
+
+---
+
+## System Flowchart
+
+```mermaid
+graph TD
+    %% Users
+    Admin([Admin])
+    Staff([Warehouse Staff])
+    Dealer([Hub Dealer])
+
+    %% System Core
+    subgraph "MMS WMS Core System"
+        direction TB
+        %% Modules
+        subgraph "Warehouse & Inventory"
+            RCV[Inbound Receiving]
+            ST[Stock Transfer]
+            SA[Stock Take / Adjustments]
+        end
+
+        subgraph "Logistics & Outbound"
+            CO[Commercial Outbound]
+            PSS_DO[PSS Delivery Orders]
+            LOG[Shipment Logs]
+        end
+
+        subgraph "PSS Contract Management"
+            HUB[PSS Master Hub Dashboard]
+            IMP[CO Import & SAP Generation]
+            ARC[Batch Archives]
+            MAS[Master Registry Upload]
+        end
+
+        subgraph "Pallet Ledger"
+            PM[Pallet Balance Tracking]
+        end
+    end
+
+    %% Database
+    DB[(MariaDB / MySQL)]
+
+    %% Access & Flows
+    Admin -->|Full Access & Config| PSS Contract Management
+    Admin -->|Oversight| Warehouse & Inventory
+    Staff -->|Executes| Warehouse & Inventory
+    Staff -->|Processes| Logistics & Outbound
+    Staff -->|Updates| Pallet Ledger
+    Dealer -->|Tracks Status| HUB
+    Dealer -->|Generates DO| PSS_DO
+
+    %% Data Flow
+    Warehouse & Inventory <--> DB
+    Logistics & Outbound <--> DB
+    PSS Contract Management <--> DB
+    Pallet Ledger <--> DB
+```
