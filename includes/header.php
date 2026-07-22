@@ -46,6 +46,8 @@ if (function_exists('check_write_permission')) {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <!-- Dynamic Responsive Tables Helper for Mobile Device View -->
     <script>
@@ -270,6 +272,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                         <li><a class="dropdown-item" href="inventory_report.php"><i class="bi bi-clipboard2-data me-1"></i><span data-lang="nav_inv_report">Inventory Report</span></a></li>
                         <li><a class="dropdown-item" href="pallet_management.php"><i class="bi bi-grid-3x3-gap me-1"></i><span data-lang="nav_pallet_monitor">Pallet Monitor</span></a></li>
+                        <li><a class="dropdown-item" href="pallet_return.php"><i class="bi bi-arrow-return-left me-1 text-warning"></i><span>Pallet Return & CN</span></a></li>
                         <li><a class="dropdown-item" href="warehouse_layout.php"><i class="bi bi-layout-three-columns me-1"></i><span>Warehouse Layout</span></a></li>
                     </ul>
                 </li>

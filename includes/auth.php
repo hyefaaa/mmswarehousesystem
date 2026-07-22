@@ -84,6 +84,7 @@ if (!function_exists('check_write_permission')) {
             
             'stock_transfer.php' => 'stock_transfer',
             'save_stock_transfer.php' => 'stock_transfer',
+            'assign_pallet_slot.php' => 'stock_transfer',
             
             'stock_take.php' => 'stock_take',
             'save_stock_take.php' => 'stock_take',
@@ -117,7 +118,12 @@ if (!function_exists('check_write_permission')) {
             
             'user_management.php' => 'user_management',
             'save_user.php' => 'user_management',
-            'delete_user.php' => 'user_management'
+            'delete_user.php' => 'user_management',
+            
+            'pallet_return.php' => 'pallet_return',
+            'print_prf_slip.php' => 'pallet_return',
+            'get_pallet_return_details.php' => 'pallet_return',
+            'pallet_management.php' => 'pallet_return'
         ];
 
         $target_module = $module_map[$page_name] ?? null;
@@ -193,10 +199,11 @@ if (!function_exists('check_view_permission')) {
  
             'get_batches.php', 
             'get_outbound_details.php',
-            'pallet_management.php',
             'inventory_report.php',
             'outbound_history.php',
-            'warehouse_layout.php'
+            'warehouse_layout.php',
+            'get_warehouse_grid.php',
+            'get_available_batches.php'
         ];
         if (in_array($page_name, $always_allow)) {
             return true;
@@ -258,7 +265,12 @@ if (!function_exists('check_view_permission')) {
             
             'user_management.php' => 'user_management',
             'save_user.php' => 'user_management',
-            'delete_user.php' => 'user_management'
+            'delete_user.php' => 'user_management',
+            
+            'pallet_return.php' => 'pallet_return',
+            'print_prf_slip.php' => 'pallet_return',
+            'get_pallet_return_details.php' => 'pallet_return',
+            'pallet_management.php' => 'pallet_return'
         ];
 
         $target_module = $module_map[$page_name] ?? null;

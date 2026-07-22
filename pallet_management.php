@@ -222,7 +222,10 @@ require_once 'includes/header.php';
                 <h1 class="fw-800 mb-1"><i class="bi bi-grid-3x3-gap-fill me-2 text-warning"></i><span data-lang="nav_pallet_monitor">Pallet Monitor & Management</span></h1>
                 <p class="opacity-75 mb-0 fw-light" data-lang="pallet_subtitle">Real-time assets tracking, empty pallet stocks & movement logs</p>
             </div>
-            <div class="d-flex gap-3 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <a href="pallet_return.php" class="btn btn-warning text-dark fw-bold shadow-sm">
+                    <i class="bi bi-arrow-return-left me-1"></i> Pallet Return & CN
+                </a>
                 <button class="btn btn-info text-white fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#adjustModal">
                     <i class="bi bi-sliders me-1"></i> <span data-lang="btn_adjust_pallet">Manual Adjustment</span>
                 </button>

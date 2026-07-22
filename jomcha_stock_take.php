@@ -240,6 +240,14 @@ if ($lt && $lt['last_date']) {
     $days_since_last_take = (new DateTime($lt['last_date']))->diff(new DateTime())->days;
 }
 
+$sub_cat_select = "'' as sub_category,";
+try {
+    $c3 = $pdo->query("SHOW COLUMNS FROM products LIKE 'sub_category'")->fetch();
+    if ($c3) {
+        $sub_cat_select = "p.sub_category,";
+    }
+} catch (Exception $ex) {}
+
 // Check permitted_location & permitted_sub_location columns on products table
 $perm_loc_select = "'' as permitted_location, '' as permitted_sub_location,";
 try {
@@ -255,8 +263,8 @@ try {
 }
 
 // Active stocks with balance calculation
-$stocks_raw = $pdo->query("
-    SELECT p.id, p.name, p.category, {$perm_loc_select} p.pack_size, p.uom,
+$jomcha_stocks = $pdo->query("
+    SELECT p.id, p.name, p.category, {$sub_cat_select} {$perm_loc_select} p.pack_size, p.uom,
             (SELECT COALESCE(SUM(oi.qty * p2.pack_size), 0)
              FROM outbound_items oi
              JOIN outbound_logs ol ON oi.outbound_id = ol.id
@@ -266,62 +274,6 @@ $stocks_raw = $pdo->query("
     WHERE p.is_active = 1
     ORDER BY baki DESC, p.name ASC
 ")->fetchAll();
-
-// Cache category-level locations from existing products to support automatic inheritance
-$category_locations = [];
-try {
-    if ($c1 && $c2) {
-        $cat_locs = $pdo->query("
-            SELECT category, permitted_location, permitted_sub_location 
-            FROM products 
-            WHERE (permitted_location IS NOT NULL AND permitted_location != '') 
-               OR (permitted_sub_location IS NOT NULL AND permitted_sub_location != '')
-        ")->fetchAll();
-        foreach ($cat_locs as $cl) {
-            $cat = trim(strtolower($cl['category']));
-            if (!isset($category_locations[$cat])) {
-                $category_locations[$cat] = [
-                    'loc' => $cl['permitted_location'],
-                    'sub' => $cl['permitted_sub_location']
-                ];
-            }
-        }
-    }
-} catch (Exception $ex) {}
-
-$jomcha_stocks = [];
-foreach ($stocks_raw as $stk) {
-    $stk_loc = $stk['permitted_location'] ?? '';
-    $stk_sub_loc = $stk['permitted_sub_location'] ?? '';
-    
-    if (empty($stk_loc) && empty($stk_sub_loc)) {
-        // 1. Try to inherit from category configuration
-        $cat = trim(strtolower($stk['category']));
-        if (isset($category_locations[$cat])) {
-            $stk_loc = $category_locations[$cat]['loc'];
-            $stk_sub_loc = $category_locations[$cat]['sub'];
-        }
-    }
-    
-    // 2. Fall back to smart defaults if still empty (consistent with product_management.php)
-    if (empty($stk_loc) && empty($stk_sub_loc)) {
-        $cat_u = strtoupper(trim($stk['category']));
-        if (strpos($cat_u, 'BEEF') !== false || strpos($cat_u, 'MEAT') !== false || strpos($cat_u, 'FROZEN') !== false || strpos($cat_u, 'ICE') !== false) {
-            $stk_loc = ''; // Allow all areas by default
-            $stk_sub_loc = 'Freezer';
-        } elseif (strpos($cat_u, 'CHILLED') !== false || strpos($cat_u, 'MILK') !== false || strpos($cat_u, 'DAIRY') !== false || strpos($cat_u, 'PST') !== false) {
-            $stk_loc = ''; // Allow all areas by default
-            $stk_sub_loc = 'Chiller';
-        } else {
-            $stk_loc = ''; // Allow all areas by default
-            $stk_sub_loc = 'Rack, Pallet';
-        }
-    }
-    
-    $stk['permitted_location'] = $stk_loc;
-    $stk['permitted_sub_location'] = $stk_sub_loc;
-    $jomcha_stocks[] = $stk;
-}
 
 // Expiry Monitoring
 $all_expiry_batches = [];
@@ -534,7 +486,7 @@ require_once 'includes/header.php';
             <!-- Search & Filters Row -->
             <div class="row g-3 mb-4">
                 <!-- Search Input -->
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="input-group shadow-sm" style="border-radius:15px; overflow:hidden;">
                         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                         <input type="text" id="searchStk" onkeyup="tapisKiraan()" class="form-control border-start-0 py-3" data-lang-placeholder="jomcha_st_search" placeholder="Cari nama produk...">
@@ -551,6 +503,20 @@ require_once 'includes/header.php';
                             if (empty(trim($cat))) continue;
                         ?>
                             <option value="<?= htmlspecialchars(strtolower(trim($cat))) ?>"><?= htmlspecialchars($cat ?? '') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <!-- Sub-Category Filter -->
+                <div class="col-md-3">
+                    <select id="filterSubCategory" onchange="tapisKiraan()" class="form-select py-3 shadow-sm" style="border-radius:15px; border: 1px solid #dee2e6; font-weight:600; color:#4a5568;">
+                        <option value="">-- Semua Sub-Kategori --</option>
+                        <?php 
+                        $sub_cats = array_filter(array_unique(array_column($jomcha_stocks, 'sub_category')));
+                        sort($sub_cats);
+                        foreach ($sub_cats as $sc): 
+                            if (empty(trim($sc))) continue;
+                        ?>
+                            <option value="<?= htmlspecialchars(strtolower(trim($sc))) ?>"><?= htmlspecialchars($sc) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -589,6 +555,7 @@ require_once 'includes/header.php';
                                          data-id="<?= $stk['id'] ?>"
                                          data-name="<?= strtolower(htmlspecialchars($stk['name'] ?? '')) ?>"
                                          data-category="<?= strtolower(htmlspecialchars(trim($stk['category']))) ?>"
+                                         data-sub-category="<?= strtolower(htmlspecialchars(trim($stk['sub_category'] ?? ''))) ?>"
                                          data-baki="<?= $stk['baki'] ?>"
                                          data-mandatory="<?= $is_mandatory ? 'true' : 'false' ?>">
                                         
@@ -596,7 +563,12 @@ require_once 'includes/header.php';
                                         <td class="ps-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div>
-                                                    <span class="badge bg-secondary-subtle text-secondary small mb-1"><?= htmlspecialchars($stk['category'] ?? '') ?></span>
+                                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                                        <span class="badge bg-secondary-subtle text-secondary small"><?= htmlspecialchars($stk['category'] ?? '') ?></span>
+                                                        <?php if (!empty($stk['sub_category'])): ?>
+                                                            <span class="badge bg-light text-dark border small"><i class="bi bi-tag-fill text-muted me-1"></i><?= htmlspecialchars($stk['sub_category']) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                     <h6 class="fw-bold mb-0 text-navy"><?= htmlspecialchars($stk['name'] ?? '') ?></h6>
                                                 </div>
                                             </div>
@@ -790,10 +762,10 @@ require_once 'includes/header.php';
                     <!-- MODAL TAB: JC BARN (2 Chillers, 1 Rack) -->
                     <div class="tab-pane fade show active" id="modal-jcb" role="tabpanel">
                         <div class="row g-3">
-                            <!-- Chiller 1 -->
+                            <!-- Barn Chiller 1 -->
                             <div class="col-md-4">
                                 <div class="location-cell shadow-sm">
-                                    <label class="form-label small fw-extrabold text-muted text-uppercase mb-2">❄️ Chiller 1</label>
+                                    <label class="form-label small fw-extrabold text-muted text-uppercase mb-2">❄️ Barn Chiller 1</label>
                                     <div class="row g-1">
                                         <div class="col-6">
                                             <input type="number" id="modal_jcb_chiller_1_ctn" min="0" value="0" class="form-control form-control-sm text-center fw-bold border-purple" placeholder="Ctn" oninput="hitungSubTotalModal()">
@@ -806,10 +778,10 @@ require_once 'includes/header.php';
                                     </div>
                                 </div>
                             </div>
-                            <!-- Chiller 2 -->
+                            <!-- Barn Chiller 2 -->
                             <div class="col-md-4">
                                 <div class="location-cell shadow-sm">
-                                    <label class="form-label small fw-extrabold text-muted text-uppercase mb-2">❄️ Chiller 2</label>
+                                    <label class="form-label small fw-extrabold text-muted text-uppercase mb-2">❄️ Barn Chiller 2</label>
                                     <div class="row g-1">
                                         <div class="col-6">
                                             <input type="number" id="modal_jcb_chiller_2_ctn" min="0" value="0" class="form-control form-control-sm text-center fw-bold border-purple" placeholder="Ctn" oninput="hitungSubTotalModal()">
@@ -822,10 +794,10 @@ require_once 'includes/header.php';
                                     </div>
                                 </div>
                             </div>
-                            <!-- Rack -->
+                            <!-- Barn Rack -->
                             <div class="col-md-4">
                                 <div class="location-cell shadow-sm">
-                                    <label class="form-label small fw-extrabold text-muted text-uppercase mb-2">🪵 Rack (Rak)</label>
+                                    <label class="form-label small fw-extrabold text-muted text-uppercase mb-2">🪵 Barn Rack</label>
                                     <div class="row g-1">
                                         <div class="col-6">
                                             <input type="number" id="modal_jcb_rack_ctn" min="0" value="0" class="form-control form-control-sm text-center fw-bold border-purple" placeholder="Ctn" oninput="hitungSubTotalModal()">
@@ -1153,47 +1125,71 @@ require_once 'includes/header.php';
             }
         }
 
+        let isCustomSpecified = customPermittedSubLocation && customPermittedSubLocation.trim() !== '';
+
         locationFields.forEach(f => {
             let inputEl = document.getElementById('modal_' + f);
             if (!inputEl) return;
             
-            // Find parent grid column
             let cellCol = inputEl.closest('.col-md-4') || inputEl.closest('.col-md-6');
-            
-            // Determine Area prefix (jcb, mms, sa)
             let fieldArea = 'jcb';
             if (f.startsWith('mms_')) fieldArea = 'mms';
             else if (f.startsWith('sa_')) fieldArea = 'sa';
 
-            // Determine type of this field
-            let fieldType = 'rack';
-            if (f.includes('chiller')) fieldType = 'chiller';
-            else if (f.includes('freezer')) fieldType = 'freezer';
-            else if (f.includes('pallet')) fieldType = 'pallet';
-            
-            // Check compatibility with allowed areas and storage types
             let areaMatch = allowedAreas.includes(fieldArea);
-            
-            // Extract field sub-code (e.g., chiller 1, chiller 2, freezer meat, freezer ice cream, pallet 1, rack)
-            let fieldSubCode = f.replace('jcb_', '').replace('mms_', '').replace('sa_', '').replace('_ctn', '').replace('_pcs', '').replace(/_/g, ' ');
+            let isPermitted = false;
 
-            let typeMatch = allowedStorage.length === 0 || allowedStorage.some(a => {
-                let cleanA = a.replace('>', ' ').replace('(', ' ').replace(')', ' ').replace('-', ' ').trim();
-                return cleanA.includes(fieldArea) || 
-                       cleanA.includes(fieldType) || 
-                       fieldType.includes(cleanA) ||
-                       cleanA.includes(fieldSubCode) ||
-                       fieldSubCode.includes(cleanA) ||
-                       (cleanA.includes('jcb') && fieldArea === 'jcb') ||
-                       (cleanA.includes('mms') && fieldArea === 'mms') ||
-                       (cleanA.includes('sa') && fieldArea === 'sa');
-            });
-            
-            if (areaMatch && typeMatch) {
-                // Compatible: show
+            if (areaMatch) {
+                if (allowedStorage.length === 0) {
+                    isPermitted = true;
+                } else {
+                    let cleanSubStorage = allowedStorage.map(s => s.toLowerCase().trim());
+                    
+                    if (f.startsWith('jcb_')) {
+                        if (f.includes('chiller_1')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'barn chiller 1' || s === 'jcb chiller 1' || s === 'jc barn chiller 1' || (!isCustomSpecified && s.includes('chiller')));
+                        } else if (f.includes('chiller_2')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'barn chiller 2' || s === 'jcb chiller 2' || s === 'jc barn chiller 2' || (!isCustomSpecified && s.includes('chiller')));
+                        } else if (f.includes('rack')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'barn rack' || s === 'jcb rack' || s === 'jc barn rack' || (!isCustomSpecified && s.includes('rack')));
+                        }
+                    } else if (f.startsWith('mms_')) {
+                        if (f.includes('freezer_meat')) {
+                            isPermitted = cleanSubStorage.some(s => s.includes('meat') || (!isCustomSpecified && s.includes('freezer')));
+                        } else if (f.includes('freezer_ice_cream')) {
+                            isPermitted = cleanSubStorage.some(s => s.includes('ice cream') || s.includes('icecream') || (!isCustomSpecified && s.includes('freezer')));
+                        } else if (f.includes('chiller_1')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'chiller 1' || (!isCustomSpecified && s.includes('chiller')));
+                        } else if (f.includes('chiller_2')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'chiller 2' || (!isCustomSpecified && s.includes('chiller')));
+                        } else if (f.includes('rack')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'rack' || (!isCustomSpecified && s.includes('rack')));
+                        }
+                    } else if (f.startsWith('sa_')) {
+                        if (f.includes('pallet_1')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'pallet 1' || (!isCustomSpecified && s.includes('pallet')));
+                        } else if (f.includes('pallet_2')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'pallet 2' || (!isCustomSpecified && s.includes('pallet')));
+                        } else if (f.includes('pallet') && !f.includes('pallet_1') && !f.includes('pallet_2')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'pallet' || (!isCustomSpecified && s.includes('pallet')));
+                        } else if (f.includes('chiller_1')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'chiller 1' || (!isCustomSpecified && s.includes('chiller')));
+                        } else if (f.includes('chiller_2')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'chiller 2' || (!isCustomSpecified && s.includes('chiller')));
+                        } else if (f.includes('freezer_1')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'freezer 1' || (!isCustomSpecified && s.includes('freezer')));
+                        } else if (f.includes('freezer_2')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'freezer 2' || (!isCustomSpecified && s.includes('freezer')));
+                        } else if (f.includes('rack')) {
+                            isPermitted = cleanSubStorage.some(s => s === 'rack' || (!isCustomSpecified && s.includes('rack')));
+                        }
+                    }
+                }
+            }
+
+            if (isPermitted) {
                 if (cellCol) cellCol.style.display = '';
             } else {
-                // Incompatible: reset value and hide
                 inputEl.value = '0';
                 if (cellCol) cellCol.style.display = 'none';
             }
@@ -1295,20 +1291,49 @@ require_once 'includes/header.php';
         }
     }
 
-    // Tapis produk (Search & Category)
+    // Tapis produk (Search, Category & Sub-Category)
     function tapisKiraan() {
         let searchInput = document.getElementById('searchStk').value.toLowerCase().trim();
         let catSelect = document.getElementById('filterCategory').value;
+        let subCatElem = document.getElementById('filterSubCategory');
+        let subCatSelect = subCatElem ? subCatElem.value : '';
         let rows = document.querySelectorAll('.stk-row-item');
+        
+        // Dynamically update available options in filterSubCategory based on selected Main Category
+        if (subCatElem) {
+            let currentVal = subCatElem.value;
+            let availableSubCats = new Set();
+            
+            rows.forEach(row => {
+                let category = row.getAttribute('data-category');
+                let subCategory = (row.getAttribute('data-sub-category') || '').trim();
+                if (subCategory !== '') {
+                    if (catSelect === '' || category === catSelect) {
+                        availableSubCats.add(subCategory);
+                    }
+                }
+            });
+            
+            let optionsHtml = '<option value="">-- Semua Sub-Kategori --</option>';
+            Array.from(availableSubCats).sort().forEach(sc => {
+                let scLower = sc.toLowerCase();
+                let isSel = (scLower === currentVal.toLowerCase()) ? 'selected' : '';
+                optionsHtml += `<option value="${scLower}" ${isSel}>${sc}</option>`;
+            });
+            subCatElem.innerHTML = optionsHtml;
+            subCatSelect = subCatElem.value;
+        }
         
         rows.forEach(row => {
             let name = row.getAttribute('data-name');
             let category = row.getAttribute('data-category');
+            let subCategory = (row.getAttribute('data-sub-category') || '').toLowerCase().trim();
             
             let matchesSearch = name.includes(searchInput);
             let matchesCategory = (catSelect === '' || category === catSelect);
+            let matchesSubCategory = (subCatSelect === '' || subCategory === subCatSelect);
             
-            if (matchesSearch && matchesCategory) {
+            if (matchesSearch && matchesCategory && matchesSubCategory) {
                 row.style.display = 'table-row';
             } else {
                 row.style.display = 'none';

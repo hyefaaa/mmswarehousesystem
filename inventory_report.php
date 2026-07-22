@@ -303,7 +303,7 @@ require_once 'includes/header.php';
                 <p class="opacity-75 mb-0 small"><span data-lang="inv_subtitle">Laporan Stok Semasa</span> — <?= date('d F Y, h:i A') ?></p>
             </div>
             <div class="d-flex gap-2 no-print">
-                <a href="index.php" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
+                <a href="index.php" class="btn btn-modern btn-outline-light btn-sm px-3"><i class="bi bi-house me-1"></i> <span data-lang="nav_dashboard">Dashboard</span></a>
 
                 <button onclick="window.print()" class="btn btn-sm fw-bold" style="background:#06b6d4; color:white;">
                     <i class="bi bi-printer me-1"></i> <span data-lang="inv_btn_print">Print</span>
@@ -323,7 +323,7 @@ require_once 'includes/header.php';
     <?php endif; ?>
 
     <!-- ===== SUMMARY STATS ===== -->
-    <div class="row g-3 mb-4 no-print">
+    <div class="row g-3 mb-4 no-print animate-fade-up">
         <div class="col-6 col-md-3">
             <div class="stat-box blue">
                 <div class="stat-num text-primary"><?= number_format($stats['total_products'] ?? 0) ?></div>
@@ -351,7 +351,7 @@ require_once 'includes/header.php';
     </div>
 
     <!-- ===== CATEGORY SUMMARY PILLS ===== -->
-    <div class="mb-4 no-print">
+    <div class="mb-4 no-print animate-fade-up delay-1">
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <span class="small fw-bold text-muted me-1">KATEGORI:</span>
             <?php foreach ($cat_summary as $cat): 
@@ -362,19 +362,19 @@ require_once 'includes/header.php';
                 ?>
                 <span class="cat-badge <?= $css ?>">
                     <?= htmlspecialchars($cat['category'] ?? '') ?>
-                    <span class="badge bg-white text-dark ms-1 shadow-sm"><?= number_format($cat['total_qty']) ?> ctn</span>
+                    <span class="badge bg-white text-dark ms-2 shadow-sm rounded-pill"><?= number_format($cat['total_qty']) ?> ctn</span>
                 </span>
             <?php endforeach; ?>
         </div>
     </div>
 
     <!-- ===== FILTER PANEL ===== -->
-    <div class="filter-card no-print">
-        <div class="filter-title"><i class="bi bi-funnel me-1"></i> <span data-lang="inv_filter_title">Tapis Data</span></div>
+    <div class="filter-card no-print animate-fade-up delay-2">
+        <div class="filter-title"><i class="bi bi-funnel-fill text-primary"></i> <span data-lang="inv_filter_title">Tapis Data</span></div>
         <form method="GET" class="row g-2 align-items-end">
             <div class="col-xl-2 col-md-4">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_cat">Kategori</label>
-                <select name="category" class="form-select form-select-sm">
+                <label class="filter-label" data-lang="inv_filter_cat">Kategori</label>
+                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="" data-lang="inv_filter_all">-- Semua Kategori --</option>
                     <?php foreach ($all_categories as $cat): ?>
                         <option value="<?= htmlspecialchars($cat ?? '') ?>" <?= ($filter_category === $cat) ? 'selected' : '' ?>>
@@ -384,19 +384,19 @@ require_once 'includes/header.php';
                 </select>
             </div>
             <div class="col-xl-3 col-md-4">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_product">Nama Produk</label>
+                <label class="filter-label" data-lang="inv_filter_product">Nama Produk</label>
                 <input type="text" name="product" class="form-control form-control-sm" 
                        placeholder="Cari nama produk..." data-lang-placeholder="inv_filter_product_placeholder"
                        value="<?= htmlspecialchars($filter_product ?? '') ?>">
             </div>
             <div class="col-xl-2 col-md-4">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_col_expiry">Tarikh Luput</label>
-                <input type="date" name="expiry" class="form-control form-control-sm" 
+                <label class="filter-label" data-lang="inv_col_expiry">Tarikh Luput</label>
+                <input type="date" name="expiry" class="form-control form-control-sm" onchange="this.form.submit()" 
                        value="<?= htmlspecialchars($filter_expiry ?? '') ?>">
             </div>
             <div class="col-xl-2 col-md-4">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_loc">Lokasi</label>
-                <select name="location" class="form-select form-select-sm">
+                <label class="filter-label" data-lang="inv_filter_loc">Lokasi</label>
+                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="" data-lang="inv_filter_all">-- Semua Lokasi --</option>
                     <option value="Warehouse" <?= ($filter_location === 'Warehouse') ? 'selected' : '' ?>>Warehouse</option>
                     <option value="Buffer"    <?= ($filter_location === 'Buffer')    ? 'selected' : '' ?>>Buffer</option>
@@ -405,18 +405,18 @@ require_once 'includes/header.php';
                 </select>
             </div>
             <div class="col-xl-2 col-md-4">
-                <label class="form-label small fw-bold text-muted text-uppercase mb-1" data-lang="inv_filter_stock">Status Stok</label>
-                <select name="stock_filter" class="form-select form-select-sm">
+                <label class="filter-label" data-lang="inv_filter_stock">Status Stok</label>
+                <select name="stock_filter" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="" data-lang="inv_filter_all">-- Semua --</option>
                     <option value="in_stock" <?= ($filter_stock === 'in_stock') ? 'selected' : '' ?> data-lang="inv_filter_in_stock">Ada Stok Sahaja</option>
                     <option value="zero"     <?= ($filter_stock === 'zero')     ? 'selected' : '' ?> data-lang="inv_filter_zero">Kosong Sahaja</option>
                 </select>
             </div>
             <div class="col-xl-1 col-md-4 d-flex gap-2">
-                <button type="submit" class="btn btn-sm fw-bold w-100" style="background:#0f172a; color:white;" data-lang-title="btn_search" title="Cari">
+                <button type="submit" class="btn btn-modern btn-primary btn-sm w-100" data-lang-title="btn_search" title="Cari">
                     <i class="bi bi-search"></i>
                 </button>
-                <a href="inventory_report.php" class="btn btn-sm btn-light border w-100" data-lang-title="btn_reset" title="Reset">
+                <a href="inventory_report.php" class="btn btn-modern btn-light border w-100" data-lang-title="btn_reset" title="Reset">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
             </div>
@@ -424,10 +424,10 @@ require_once 'includes/header.php';
     </div>
 
     <!-- ===== INVENTORY TABLE ===== -->
-    <div class="inv-table-wrap">
+    <div class="inv-table-wrap animate-fade-up delay-3">
         <div class="table-header">
             <div>
-                <span class="fw-800 text-dark"><i class="bi bi-table me-2 text-info"></i><span data-lang="inv_table_title">Senarai Inventori</span></span>
+                <span class="fw-800 text-dark fs-6"><i class="bi bi-list-columns-reverse me-2 text-primary"></i><span data-lang="inv_table_title">Senarai Inventori</span></span>
                 <span class="badge bg-secondary ms-2"><?= count($inventory) ?> baris</span>
                 <?php if (!empty($filter_category) || !empty($filter_product) || !empty($filter_location) || !empty($filter_stock) || !empty($filter_expiry)): ?>
                     <span class="badge ms-1" style="background:#06b6d4;">Filtered</span>

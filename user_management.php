@@ -42,6 +42,95 @@ $page_title = 'Pengurusan Pengguna | Moo Moo Supplies';
 require_once 'includes/header.php';
 ?>
 
+<style>
+    /* ============ ANIMATIONS ============ */
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .delay-1 { animation-delay: 0.1s; }
+
+    /* ============ PAGE LAYOUT ============ */
+    body { background-color: #f8fafc; }
+    .page-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: white;
+        padding: 32px 0 28px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.4);
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+    .page-header::after {
+        content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+        background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.15), transparent 60%);
+        pointer-events: none;
+    }
+    
+    /* Modern Buttons */
+    .btn-modern {
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-modern:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+    /* ============ MAIN CARD & TABLE ============ */
+    .main-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        padding: 24px;
+        overflow: hidden;
+    }
+    
+    .table-hover tbody tr {
+        transition: all 0.2s ease;
+    }
+    .table-hover tbody tr:hover { background-color: #f8fafc; }
+    .table thead th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        padding: 14px 20px;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .table tbody td { padding: 14px 20px; vertical-align: middle; }
+
+    /* ============ MODAL ============ */
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .modal-header {
+        background: #0f172a;
+        color: white;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        padding: 20px 24px;
+    }
+    .modal-body { padding: 24px; }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+</style>
 <div class="page-header mb-4">
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center">
@@ -49,7 +138,7 @@ require_once 'includes/header.php';
                 <h1 class="fw-800 mb-1"><i class="bi bi-people-fill me-2"></i><span data-lang="user_mgmt_page_title">User Management</span></h1>
                 <p class="opacity-75 mb-0 fw-light" data-lang="user_mgmt_desc">Manage access credentials, roles, and status of staff and dealers</p>
             </div>
-            <button class="btn btn-info fw-bold px-4" onclick="openAddModal()">
+            <button class="btn btn-modern btn-info fw-bold px-4" onclick="openAddModal()">
                 <i class="bi bi-person-plus-fill me-1"></i> <span data-lang="user_mgmt_add_btn">Tambah Pengguna</span>
             </button>
         </div>
@@ -64,7 +153,7 @@ require_once 'includes/header.php';
         </div>
     <?php endif; ?>
 
-    <div class="card main-card border-0 mb-5">
+    <div class="card main-card border-0 mb-5 animate-fade-up">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="fw-800 text-navy mb-0"><i class="bi bi-people me-2"></i><span data-lang="user_mgmt_list_title">Senarai Pengguna Hub</span></h5>
             <span class="badge bg-navy px-3 py-2 rounded-pill"><?= count($users) ?> <span data-lang="user_mgmt_active_users">Pengguna Aktif</span></span>
@@ -138,11 +227,11 @@ require_once 'includes/header.php';
                             </td>
                             <td class="text-center">
                                 <div class="btn-group gap-2">
-                                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3"
+                                    <button type="button" class="btn btn-modern btn-outline-primary btn-sm px-3"
                                              onclick="openEditModal(<?= $u['id'] ?>)">
                                          <i class="bi bi-pencil-fill me-1"></i> <span data-lang="btn_edit">Edit</span>
                                      </button>
-                                     <button type="button" class="btn btn-outline-danger btn-sm fw-bold px-3"
+                                     <button type="button" class="btn btn-modern btn-outline-danger btn-sm px-3"
                                              onclick="deleteUser(<?= $u['id'] ?>)">
                                          <i class="bi bi-trash-fill me-1"></i> <span data-lang="btn_delete">Padam</span>
                                      </button>
@@ -269,6 +358,12 @@ require_once 'includes/header.php';
                                         <label class="form-check-label small" for="view_jomcha">Jomcha Stock & Request</label>
                                     </div>
                                 </div>
+                                <div class="col">
+                                    <div class="form-check">
+                                        <input class="form-check-input permission-view-cb" type="checkbox" value="pallet_return" id="view_pallet_return" name="allowed_view_modules[]">
+                                        <label class="form-check-label small" for="view_pallet_return">Pallet Return & CN</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -333,6 +428,12 @@ require_once 'includes/header.php';
                                      <div class="form-check">
                                          <input class="form-check-input permission-cb" type="checkbox" value="jomcha" id="perm_jomcha" name="allowed_modules[]">
                                          <label class="form-check-label small" for="perm_jomcha">Jomcha Stock & Request</label>
+                                     </div>
+                                 </div>
+                                 <div class="col">
+                                     <div class="form-check">
+                                         <input class="form-check-input permission-cb" type="checkbox" value="pallet_return" id="perm_pallet_return" name="allowed_modules[]">
+                                         <label class="form-check-label small" for="perm_pallet_return">Pallet Return & CN</label>
                                      </div>
                                  </div>
                             </div>

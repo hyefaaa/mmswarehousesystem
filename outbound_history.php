@@ -321,8 +321,16 @@ require_once 'includes/header.php';
             let modal = new bootstrap.Modal(document.getElementById('detailsModal'));
             modal.show();
 
-            fetch(`api/get_outbound_details.php?id=${id}&category=${cat}`)
-            .then(res => res.json())
+            fetch(`api/get_outbound_details.php?id=${id}&category=${encodeURIComponent(cat)}`)
+            .then(async res => {
+                const isJson = res.headers.get('content-type')?.includes('application/json');
+                const data = isJson ? await res.json() : await res.text();
+                if (!res.ok) {
+                    const errorMsg = isJson ? (data.error || res.statusText) : "Server error: " + data.substring(0, 80);
+                    throw new Error(errorMsg);
+                }
+                return data;
+            })
             .then(data => {
                 $('#modalItemsBody').empty();
                 if (data.length === 0) {
@@ -340,7 +348,7 @@ require_once 'includes/header.php';
                 }
             })
             .catch(err => {
-                $('#modalItemsBody').empty().append('<tr><td colspan="3" class="text-center text-danger">Gagal memuatkan butiran.</td></tr>');
+                $('#modalItemsBody').empty().append(`<tr><td colspan="3" class="text-center text-danger">Gagal memuatkan butiran: ${err.message}</td></tr>`);
                 console.error("Gagal mendapatkan butiran DO:", err);
             });
         });

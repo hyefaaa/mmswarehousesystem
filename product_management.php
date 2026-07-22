@@ -11,18 +11,121 @@ try {
         $pdo->exec("UPDATE products SET id = $next_id WHERE id = 0");
     }
     $pdo->exec("ALTER TABLE products MODIFY id INT(11) NOT NULL AUTO_INCREMENT");
+} catch (Exception $ex) {}
 
-    // Auto-migration for permitted_location & permitted_sub_location columns
+// Auto-migration for products table columns
+try {
     $c1 = $pdo->query("SHOW COLUMNS FROM products LIKE 'permitted_location'")->fetch();
     if (!$c1) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN `permitted_location` VARCHAR(255) DEFAULT NULL AFTER `category`");
+        $pdo->exec("ALTER TABLE products ADD COLUMN `permitted_location` VARCHAR(500) DEFAULT NULL AFTER `category`");
+    } else {
+        $pdo->exec("ALTER TABLE products MODIFY COLUMN `permitted_location` VARCHAR(500) DEFAULT NULL");
     }
-    $c2 = $pdo->query("SHOW COLUMNS FROM products LIKE 'permitted_sub_location'")->fetch();
-    if (!$c2) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN `permitted_sub_location` VARCHAR(255) DEFAULT NULL AFTER `permitted_location`");
+} catch (Exception $ex) {}
+
+try {
+    $c3 = $pdo->query("SHOW COLUMNS FROM products LIKE 'sub_category'")->fetch();
+    if (!$c3) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN `sub_category` VARCHAR(255) DEFAULT NULL AFTER `category`");
     }
-} catch (Exception $ex) {
-    // Abaikan jika tiada kebenaran ALTER
+} catch (Exception $ex) {}
+
+// Auto-migration for product_categories table & location / sub_categories columns
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS product_categories (
+        id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        category_name VARCHAR(255) NOT NULL UNIQUE,
+        permitted_location VARCHAR(500) DEFAULT NULL,
+        permitted_sub_location VARCHAR(500) DEFAULT NULL,
+        sub_categories TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Exception $ex) {}
+
+try {
+    $pdo->exec("ALTER TABLE product_categories ADD COLUMN `permitted_location` VARCHAR(500) DEFAULT NULL AFTER `category_name`");
+} catch (Exception $ex) {}
+
+try {
+    $pdo->exec("ALTER TABLE product_categories ADD COLUMN `permitted_sub_location` VARCHAR(500) DEFAULT NULL AFTER `permitted_location`");
+} catch (Exception $ex) {}
+
+try {
+    $pdo->exec("ALTER TABLE product_categories ADD COLUMN `sub_categories` TEXT DEFAULT NULL AFTER `permitted_sub_location`");
+} catch (Exception $ex) {}
+
+// Helper to keep product_categories table in sync with categories, sub_categories & permitted locations
+function sync_category_master($pdo, $category_name, $permitted_location = null, $permitted_sub_location = null, $sub_categories_list = null) {
+    $category_name = trim($category_name);
+    if (empty($category_name)) return;
+
+    try {
+        $pdo->exec("ALTER TABLE product_categories ADD COLUMN `permitted_location` VARCHAR(500) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE product_categories ADD COLUMN `permitted_sub_location` VARCHAR(500) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE product_categories ADD COLUMN `sub_categories` TEXT DEFAULT NULL");
+    } catch (Exception $ex) {}
+
+    try {
+        $check = $pdo->prepare("SELECT id, permitted_location, permitted_sub_location, sub_categories FROM product_categories WHERE LOWER(category_name) = LOWER(?) LIMIT 1");
+        $check->execute([$category_name]);
+        $existing = $check->fetch();
+
+        if ($existing) {
+            $p_loc = ($permitted_location !== null && $permitted_location !== '') ? $permitted_location : ($existing['permitted_location'] ?? '');
+            $p_sub_loc = ($permitted_sub_location !== null && $permitted_sub_location !== '') ? $permitted_sub_location : ($existing['permitted_sub_location'] ?? '');
+            $p_sub_cats = ($sub_categories_list !== null && $sub_categories_list !== '') ? $sub_categories_list : ($existing['sub_categories'] ?? '');
+            
+            $up = $pdo->prepare("UPDATE product_categories SET permitted_location = ?, permitted_sub_location = ?, sub_categories = ? WHERE id = ?");
+            $up->execute([$p_loc, $p_sub_loc, $p_sub_cats, $existing['id']]);
+        } else {
+            $ins = $pdo->prepare("INSERT INTO product_categories (category_name, permitted_location, permitted_sub_location, sub_categories) VALUES (?, ?, ?, ?)");
+            $ins->execute([$category_name, $permitted_location, $permitted_sub_location, $sub_categories_list]);
+        }
+    } catch (Exception $ex) {
+        try {
+            $ins = $pdo->prepare("INSERT IGNORE INTO product_categories (category_name) VALUES (?)");
+            $ins->execute([$category_name]);
+        } catch (Exception $e2) {}
+    }
+}
+
+// Pre-seed user requested Main Categories & Sub-Categories
+$preseeded_categories = [
+    'UHT' => ['UHT 100ml', 'UHT 115ml', 'UHT 125ml', 'UHT 180ml', 'UHT 200ml', 'UHT 1L'],
+    'PST' => ['PST 200ml', 'PST 568ml', 'PST 700ml', 'PST 1L', 'PST 2L'],
+    'Powder' => ['Powder 35gm', 'Powder 500gm', 'Powder 800gm', 'Powder 1kg', 'Powder 2kg'],
+    'IC' => ['IC 60ml', 'IC 75ml', 'IC 109ml'],
+    'Butter' => ['Butter 9gm', 'Butter 200gm'],
+    'Cooking' => ['Cooking 200ml', 'Cooking 1L'],
+    'Yogurt' => ['Yogurt 120gm', 'Yogurt 400gm', 'Yogurt 470gm', 'Yogurt 1.4kg'],
+    'Glass' => ['Glass 200ml', 'Glass 1L'],
+    'Merchandise' => ['Merch GiftBox', 'Merch Fridge Magnet']
+];
+
+foreach ($preseeded_categories as $m_cat => $sub_arr) {
+    $sub_str = implode(', ', $sub_arr);
+    sync_category_master($pdo, $m_cat, null, null, $sub_str);
+}
+
+// Back-fill existing categories from products table into product_categories table safely
+try {
+    $all_cats = $pdo->query("SELECT DISTINCT category, permitted_location, permitted_sub_location FROM products WHERE category IS NOT NULL AND category != ''")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($all_cats as $ac) {
+        sync_category_master($pdo, $ac['category'], $ac['permitted_location'], $ac['permitted_sub_location']);
+    }
+} catch (Exception $ex) {}
+
+$debug_post_log = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $debug_post_log = [
+        'action' => $_POST['action'] ?? 'UNKNOWN',
+        'location_opts' => $_POST['permitted_location_opts'] ?? [],
+        'location_custom' => $_POST['permitted_location'] ?? '',
+        'location_final' => get_posted_permitted_values('permitted_location'),
+        'sub_location_opts' => $_POST['permitted_sub_location_opts'] ?? [],
+        'sub_location_custom' => $_POST['permitted_sub_location'] ?? '',
+        'sub_location_final' => get_posted_permitted_values('permitted_sub_location'),
+    ];
 }
 
 // Helper to parse multi-select checkboxes & custom text inputs for permitted locations
@@ -46,17 +149,33 @@ function get_posted_permitted_values($prefix) {
     return implode(', ', $vals);
 }
 
+// Helper to resolve category and sub_category from select dropdowns or custom input text
+function resolve_posted_category_and_sub() {
+    $category = trim($_POST['category_select'] ?? '');
+    if ($category === '__new__' || empty($category)) {
+        $category = trim($_POST['category_custom'] ?? $_POST['category'] ?? '');
+    }
+
+    $sub_category = trim($_POST['sub_category_select'] ?? '');
+    if ($sub_category === '__new__') {
+        $sub_category = trim($_POST['sub_category_custom'] ?? $_POST['sub_category'] ?? '');
+    }
+    
+    return [$category, $sub_category];
+}
+
 // Handle product updates (Edit Product Form POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_product') {
     $product_id = (int)$_POST['id'];
     $barcode = trim($_POST['barcode'] ?? '');
     $qrcode = trim($_POST['qrcode'] ?? '');
-    $category = trim($_POST['category'] ?? '');
+    list($category, $sub_category) = resolve_posted_category_and_sub();
     $permitted_location = get_posted_permitted_values('permitted_location');
     $permitted_sub_location = get_posted_permitted_values('permitted_sub_location');
     $uom = trim($_POST['uom'] ?? 'Carton');
     $pack_size = (int)($_POST['pack_size'] ?? 1);
     $pallet_capacity = (int)($_POST['pallet_capacity'] ?? 60);
+    $sync_cat = isset($_POST['sync_category']) && $_POST['sync_category'] == '1';
     
     if (empty($category)) {
         $error_msg = "Category is required.";
@@ -69,8 +188,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $product_name = $old_product['name'] ?? 'Unknown';
             $old_barcode = $old_product['barcode'] ?? '';
 
-            $stmt = $pdo->prepare("UPDATE products SET barcode = ?, qrcode = ?, category = ?, permitted_location = ?, permitted_sub_location = ?, uom = ?, pack_size = ?, pallet_capacity = ? WHERE id = ?");
-            $stmt->execute([$barcode, $qrcode, $category, $permitted_location, $permitted_sub_location, $uom, $pack_size, $pallet_capacity, $product_id]);
+            $stmt = $pdo->prepare("UPDATE products SET barcode = ?, qrcode = ?, category = ?, sub_category = ?, permitted_location = ?, permitted_sub_location = ?, uom = ?, pack_size = ?, pallet_capacity = ? WHERE id = ?");
+            $stmt->execute([$barcode, $qrcode, $category, $sub_category, $permitted_location, $permitted_sub_location, $uom, $pack_size, $pallet_capacity, $product_id]);
+            
+            if ($sync_cat && !empty($category)) {
+                if (!empty($sub_category)) {
+                    $upCat = $pdo->prepare("UPDATE products SET permitted_location = ?, permitted_sub_location = ? WHERE LOWER(category) = LOWER(?) AND LOWER(sub_category) = LOWER(?)");
+                    $upCat->execute([$permitted_location, $permitted_sub_location, $category, $sub_category]);
+                } else {
+                    $upCat = $pdo->prepare("UPDATE products SET permitted_location = ?, permitted_sub_location = ? WHERE LOWER(category) = LOWER(?)");
+                    $upCat->execute([$permitted_location, $permitted_sub_location, $category]);
+                }
+            }
+            
+            // Sync into product_categories master table
+            sync_category_master($pdo, $category, $permitted_location, $permitted_sub_location, $sub_category);
+            
             $success_msg = "Product updated successfully under category '$category'!";
             $_GET['category'] = $category;
             
@@ -91,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Handle standalone category creation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_category') {
     $new_cat_name = trim($_POST['category_name'] ?? '');
+    $sub_categories = trim($_POST['sub_categories'] ?? '');
     $initial_product = trim($_POST['initial_product_name'] ?? '');
     $cat_permitted_location = get_posted_permitted_values('permitted_location');
     $cat_permitted_sub_location = get_posted_permitted_values('permitted_sub_location');
@@ -99,21 +233,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $error_msg = "Category name is required.";
     } else {
         try {
-            // Check if category already exists
+            // Register / Sync directly into product_categories table!
+            sync_category_master($pdo, $new_cat_name, $cat_permitted_location, $cat_permitted_sub_location, $sub_categories);
+
+            // Check if category already exists in products table
             $check = $pdo->prepare("SELECT COUNT(*) FROM products WHERE category = ?");
             $check->execute([$new_cat_name]);
             if ($check->fetchColumn() > 0) {
                 if (!empty($cat_permitted_location) || !empty($cat_permitted_sub_location)) {
-                    $upCat = $pdo->prepare("UPDATE products SET permitted_location = ?, permitted_sub_location = ? WHERE category = ? AND (permitted_location IS NULL OR permitted_location = '')");
+                    $upCat = $pdo->prepare("UPDATE products SET permitted_location = ?, permitted_sub_location = ? WHERE category = ?");
                     $upCat->execute([$cat_permitted_location, $cat_permitted_sub_location, $new_cat_name]);
                 }
-                $success_msg = "Category '$new_cat_name' updated in the catalog!";
+                $success_msg = "Category '$new_cat_name' registered & updated in the catalog!";
                 $_GET['category'] = $new_cat_name;
             } else {
                 $prod_name = !empty($initial_product) ? $initial_product : ($new_cat_name . " Initial SKU");
                 $stmt = $pdo->prepare("INSERT INTO products (name, category, permitted_location, permitted_sub_location, uom, pack_size, pallet_capacity, is_active) VALUES (?, ?, ?, ?, 'Carton', 1, 60, 1)");
                 $stmt->execute([$prod_name, $new_cat_name, $cat_permitted_location, $cat_permitted_sub_location]);
-                $success_msg = "New category '$new_cat_name' registered successfully!";
+                $success_msg = "New category '$new_cat_name' registered successfully in product_categories table!";
                 $_GET['category'] = $new_cat_name;
             }
         } catch (PDOException $e) {
@@ -127,12 +264,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $name = trim($_POST['name'] ?? '');
     $barcode = trim($_POST['barcode'] ?? '');
     $qrcode = trim($_POST['qrcode'] ?? '');
-    $category = trim($_POST['category'] ?? '');
+    list($category, $sub_category) = resolve_posted_category_and_sub();
     $permitted_location = get_posted_permitted_values('permitted_location');
     $permitted_sub_location = get_posted_permitted_values('permitted_sub_location');
     $uom = trim($_POST['uom'] ?? 'Carton');
     $pack_size = (int)($_POST['pack_size'] ?? 1);
     $pallet_capacity = (int)($_POST['pallet_capacity'] ?? 60);
+    $sync_cat = isset($_POST['sync_category']) && $_POST['sync_category'] == '1';
     
     if (empty($name) || empty($category)) {
         $error_msg = "Product Name and Category are required.";
@@ -144,9 +282,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($check->fetch()) {
                 $error_msg = "A product with this name already exists.";
             } else {
-                $stmt = $pdo->prepare("INSERT INTO products (name, barcode, qrcode, category, permitted_location, permitted_sub_location, uom, pack_size, pallet_capacity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
-                $stmt->execute([$name, $barcode, $qrcode, $category, $permitted_location, $permitted_sub_location, $uom, $pack_size, $pallet_capacity]);
+                $stmt = $pdo->prepare("INSERT INTO products (name, barcode, qrcode, category, sub_category, permitted_location, permitted_sub_location, uom, pack_size, pallet_capacity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+                $stmt->execute([$name, $barcode, $qrcode, $category, $sub_category, $permitted_location, $permitted_sub_location, $uom, $pack_size, $pallet_capacity]);
                 $new_id = $pdo->lastInsertId();
+                
+                if ($sync_cat && !empty($category)) {
+                    if (!empty($sub_category)) {
+                        $upCat = $pdo->prepare("UPDATE products SET permitted_location = ?, permitted_sub_location = ? WHERE LOWER(category) = LOWER(?) AND LOWER(sub_category) = LOWER(?)");
+                        $upCat->execute([$permitted_location, $permitted_sub_location, $category, $sub_category]);
+                    } else {
+                        $upCat = $pdo->prepare("UPDATE products SET permitted_location = ?, permitted_sub_location = ? WHERE LOWER(category) = LOWER(?)");
+                        $upCat->execute([$permitted_location, $permitted_sub_location, $category]);
+                    }
+                }
+
+                // Sync into product_categories master table
+                sync_category_master($pdo, $category, $permitted_location, $permitted_sub_location, $sub_category);
+                
                 $success_msg = "Product created successfully under category '$category'!";
                 $_GET['category'] = $category; // Auto-set filter so newly added product/category shows immediately
                 
@@ -190,131 +342,183 @@ if (isset($_GET['toggle_id'])) {
     exit;
 }
 
-$categories = $pdo->query("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category ASC")->fetchAll(PDO::FETCH_COLUMN);
+$categories = [];
+try {
+    $cats_pc = $pdo->query("SELECT category_name FROM product_categories WHERE category_name IS NOT NULL AND category_name != '' ORDER BY category_name ASC")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($cats_pc as $c) {
+        $c = trim($c);
+        if ($c !== '' && !in_array($c, $categories)) $categories[] = $c;
+    }
+} catch (Exception $ex) {}
+try {
+    $cats_p = $pdo->query("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category ASC")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($cats_p as $c) {
+        $c = trim($c);
+        if ($c !== '' && !in_array($c, $categories)) $categories[] = $c;
+    }
+} catch (Exception $ex) {}
+sort($categories);
+
+$category_location_map = [];
+try {
+    $rows_pc = $pdo->query("SELECT category_name, permitted_location, permitted_sub_location, sub_categories FROM product_categories")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows_pc as $rpc) {
+        $c_name = trim($rpc['category_name']);
+        if ($c_name !== '') {
+            $category_location_map[$c_name] = [
+                'permitted_location' => $rpc['permitted_location'] ?? '',
+                'permitted_sub_location' => $rpc['permitted_sub_location'] ?? '',
+                'sub_categories' => $rpc['sub_categories'] ?? ''
+            ];
+        }
+    }
+} catch (Exception $ex) {}
+
+try {
+    $rows_prod_cat = $pdo->query("SELECT category, GROUP_CONCAT(DISTINCT permitted_location SEPARATOR ', ') as locs, GROUP_CONCAT(DISTINCT permitted_sub_location SEPARATOR ', ') as sub_locs FROM products WHERE category IS NOT NULL AND category != '' GROUP BY category")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows_prod_cat as $rpc) {
+        $c_name = trim($rpc['category']);
+        if ($c_name !== '' && !isset($category_location_map[$c_name])) {
+            $category_location_map[$c_name] = [
+                'permitted_location' => $rpc['locs'] ?? '',
+                'permitted_sub_location' => $rpc['sub_locs'] ?? '',
+                'sub_categories' => ''
+            ];
+        }
+    }
+} catch (Exception $ex) {}
 
 // Fetch distinct Main Locations & Sub-Locations from database + standard list safely
-$main_locations_set = ['JC Barn', 'Kedai Jomcha', 'Store Area', 'PSS Zone', 'COM Zone', 'POW Zone'];
+$main_locations_set = ['Kedai Jomcha', 'Store Area', 'JC Barn', 'PSS Zone', 'COM Zone', 'POW Zone'];
 try {
     $c1 = $pdo->query("SHOW COLUMNS FROM products LIKE 'permitted_location'")->fetch();
     if ($c1) {
         $main_locations_raw = $pdo->query("SELECT DISTINCT permitted_location FROM products WHERE permitted_location IS NOT NULL AND permitted_location != ''")->fetchAll(PDO::FETCH_COLUMN);
         foreach ($main_locations_raw as $loc_item) {
-            $loc_item = trim($loc_item);
-            if ($loc_item !== '' && !in_array($loc_item, $main_locations_set)) {
-                $main_locations_set[] = $loc_item;
+            $parts = explode(',', $loc_item);
+            foreach ($parts as $p_val) {
+                $p_val = trim($p_val);
+                if ($p_val !== '' && !in_array($p_val, $main_locations_set)) {
+                    $main_locations_set[] = $p_val;
+                }
+            }
+        }
+    }
+    $pc_locs = $pdo->query("SELECT DISTINCT permitted_location FROM product_categories WHERE permitted_location IS NOT NULL AND permitted_location != ''")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($pc_locs as $loc_item) {
+        $parts = explode(',', $loc_item);
+        foreach ($parts as $p_val) {
+            $p_val = trim($p_val);
+            if ($p_val !== '' && !in_array($p_val, $main_locations_set)) {
+                $main_locations_set[] = $p_val;
             }
         }
     }
 } catch (Exception $ex) {}
 sort($main_locations_set);
 
-$sub_locations_set = ['Rack', 'Chiller 1', 'Chiller 2', 'Freezer (Meat)', 'Freezer (Ice Cream)', 'Pallet 1', 'Pallet 2', 'Chiller', 'Freezer', 'Pallet'];
+$standard_sub_list = ['Freezer (Meat)', 'Freezer (Ice Cream)', 'Chiller 1', 'Chiller 2', 'Pallet 1', 'Pallet 2', 'Pallet', 'Rack', 'Barn Chiller 1', 'Barn Chiller 2', 'Barn Rack', 'Freezer 1', 'Freezer 2', 'Store Chiller 1', 'Store Chiller 2', 'Store Rack'];
+$custom_sub_locations = [];
+
 try {
     $c2 = $pdo->query("SHOW COLUMNS FROM products LIKE 'permitted_sub_location'")->fetch();
     if ($c2) {
         $sub_locations_raw = $pdo->query("SELECT DISTINCT permitted_sub_location FROM products WHERE permitted_sub_location IS NOT NULL AND permitted_sub_location != ''")->fetchAll(PDO::FETCH_COLUMN);
         foreach ($sub_locations_raw as $sub_item) {
-            $sub_item = trim($sub_item);
-            if ($sub_item !== '' && !in_array($sub_item, $sub_locations_set)) {
-                $sub_locations_set[] = $sub_item;
+            $parts = explode(',', $sub_item);
+            foreach ($parts as $p_val) {
+                $p_val = trim($p_val);
+                if ($p_val !== '' && !in_array($p_val, $standard_sub_list) && !in_array($p_val, $custom_sub_locations)) {
+                    $custom_sub_locations[] = $p_val;
+                }
+            }
+        }
+    }
+    $pc_sub_locs = $pdo->query("SELECT DISTINCT permitted_sub_location FROM product_categories WHERE permitted_sub_location IS NOT NULL AND permitted_sub_location != ''")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($pc_sub_locs as $sub_item) {
+        $parts = explode(',', $sub_item);
+        foreach ($parts as $p_val) {
+            $p_val = trim($p_val);
+            if ($p_val !== '' && !in_array($p_val, $standard_sub_list) && !in_array($p_val, $custom_sub_locations)) {
+                $custom_sub_locations[] = $p_val;
             }
         }
     }
 } catch (Exception $ex) {}
-sort($sub_locations_set);
+sort($custom_sub_locations);
+$cat_subcat_map = [];
+try {
+    $rows_pc = $pdo->query("SELECT category_name, sub_categories FROM product_categories")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows_pc as $rpc) {
+        $c_name = trim($rpc['category_name']);
+        if ($c_name !== '') {
+            $sub_list = [];
+            if (!empty($rpc['sub_categories'])) {
+                $parts = explode(',', $rpc['sub_categories']);
+                foreach ($parts as $p) {
+                    $p = trim($p);
+                    if ($p !== '' && !in_array($p, $sub_list)) $sub_list[] = $p;
+                }
+            }
+            $cat_subcat_map[$c_name] = $sub_list;
+        }
+    }
+} catch (Exception $ex) {}
+
+try {
+    $rows_prod_subs = $pdo->query("SELECT DISTINCT category, sub_category FROM products WHERE category IS NOT NULL AND category != '' AND sub_category IS NOT NULL AND sub_category != ''")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows_prod_subs as $rps) {
+        $c_name = trim($rps['category']);
+        $s_name = trim($rps['sub_category']);
+        if ($c_name !== '' && $s_name !== '') {
+            if (!isset($cat_subcat_map[$c_name])) {
+                $cat_subcat_map[$c_name] = [];
+            }
+            if (!in_array($s_name, $cat_subcat_map[$c_name])) {
+                $cat_subcat_map[$c_name][] = $s_name;
+            }
+        }
+    }
+} catch (Exception $ex) {}
+
 $search = $_GET['search'] ?? '';
 $cat_filter = $_GET['category'] ?? '';
+$sub_cat_filter = $_GET['sub_category'] ?? '';
+
+// Build dependent list of sub-categories for PHP initial page render
+$sub_categories_list = [];
+if (!empty($cat_filter)) {
+    foreach ($cat_subcat_map as $c_name => $subs) {
+        if (strtoupper(trim($c_name)) === strtoupper(trim($cat_filter))) {
+            $sub_categories_list = array_merge($sub_categories_list, $subs);
+        }
+    }
+} else {
+    foreach ($cat_subcat_map as $c_name => $subs) {
+        $sub_categories_list = array_merge($sub_categories_list, $subs);
+    }
+}
+$sub_categories_list = array_unique($sub_categories_list);
+sort($sub_categories_list);
 
 $sql = "SELECT * FROM products WHERE 1=1";
 $params = [];
 if ($search) {
-    $sql .= " AND (name LIKE ? OR category LIKE ?)";
+    $sql .= " AND (name LIKE ? OR category LIKE ? OR sub_category LIKE ?)";
+    $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
 if ($cat_filter) { $sql .= " AND category = ?"; $params[] = $cat_filter; }
-$sql .= " ORDER BY category ASC, name ASC";
+if ($sub_cat_filter) { $sql .= " AND sub_category = ?"; $params[] = $sub_cat_filter; }
+$sql .= " ORDER BY category ASC, sub_category ASC, name ASC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $products = $stmt->fetchAll();
+
 $page_title = 'Product Management | MMS';
 require_once 'includes/header.php';
 ?>
-<style>
-/* Modern Selectable Pill Checkboxes for Permitted Locations */
-.location-pills-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 10px;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    background-color: #f8f9fa;
-    max-height: 125px;
-    overflow-y: auto;
-}
-
-.loc-pill-item {
-    position: relative;
-    user-select: none;
-}
-
-.loc-pill-item input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.loc-pill-label {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 12px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #495057;
-    background-color: #fff;
-    border: 1px solid #ced4da;
-    border-radius: 30px;
-    cursor: pointer;
-    transition: all 0.15s ease-in-out;
-}
-
-.loc-pill-label:hover {
-    background-color: #f1f3f5;
-    border-color: #adb5bd;
-}
-
-/* Selected state for Main Locations (Blue) */
-.loc-pill-item.loc-pill-primary input[type="checkbox"]:checked + .loc-pill-label {
-    background-color: #e7f1ff;
-    color: #0d6efd;
-    border-color: #0d6efd;
-    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.1);
-}
-
-.loc-pill-item.loc-pill-primary input[type="checkbox"]:checked + .loc-pill-label::before {
-    content: "\F272"; /* bootstrap-icons check-circle-fill */
-    font-family: "bootstrap-icons";
-    margin-right: 5px;
-    font-size: 0.85rem;
-}
-
-/* Selected state for Sub Locations (Green) */
-.loc-pill-item.loc-pill-success input[type="checkbox"]:checked + .loc-pill-label {
-    background-color: #e8f5e9;
-    color: #198754;
-    border-color: #198754;
-    box-shadow: 0 2px 4px rgba(25, 135, 84, 0.1);
-}
-
-.loc-pill-item.loc-pill-success input[type="checkbox"]:checked + .loc-pill-label::before {
-    content: "\F272"; /* bootstrap-icons check-circle-fill */
-    font-family: "bootstrap-icons";
-    margin-right: 5px;
-    font-size: 0.85rem;
-}
-</style>
 
 <div class="page-header mb-4">
     <div class="container-fluid px-4">
@@ -325,7 +529,7 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <button type="button" class="btn btn-outline-light fw-bold" onclick="openCategoryModal()"><i class="bi bi-folder-plus me-1"></i> + New Category</button>
+                <button type="button" class="btn btn-outline-light fw-bold" onclick="openCategoryModal()"><i class="bi bi-folder2-open me-1"></i> Manage / New Category</button>
                 <button type="button" class="btn btn-success fw-bold text-white" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> Add Product</button>
             </div>
         </div>
@@ -344,80 +548,58 @@ require_once 'includes/header.php';
         </div>
     <?php endif; ?>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const sessionKey = 'mms_filter_state_product_management.php';
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        // If clear_filter is set in URL, clear sessionStorage and redirect to clean URL
-        if (urlParams.has('clear_filter')) {
-            if (typeof sessionStorage !== 'undefined') {
-                sessionStorage.removeItem(sessionKey);
-            }
-            window.location.href = 'product_management.php';
-            return;
-        }
-        
-        // If we are on the base page with no filters, restore the saved filter state if available
-        if (window.location.search === '') {
-            if (typeof sessionStorage !== 'undefined') {
-                const savedFilter = sessionStorage.getItem(sessionKey);
-                if (savedFilter && savedFilter !== '?category=') {
-                    window.location.href = 'product_management.php' + savedFilter;
-                    return;
+    <?php if (isset($success_msg) || isset($error_msg)): ?>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sessionKey = 'mms_filter_state_product_management.php';
+            <?php if (isset($success_msg)): ?>
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem(sessionKey, '?category=' + encodeURIComponent(<?= json_encode($cat_filter ?? '') ?>));
                 }
-            }
-        }
-        
-        // If we have active filters in URL, save them to sessionStorage
-        if (urlParams.has('category') || urlParams.has('search')) {
-            if (typeof sessionStorage !== 'undefined') {
-                sessionStorage.setItem(sessionKey, window.location.search);
-            }
-        }
-
-        // Show SweetAlert alerts if set
-        <?php if (isset($success_msg)): ?>
-            Swal.fire({
-                title: 'Success!',
-                text: <?= json_encode($success_msg) ?>,
-                icon: 'success',
-                confirmButtonColor: '#198754'
-            });
-        <?php endif; ?>
-        <?php if (isset($error_msg)): ?>
-            Swal.fire({
-                title: 'Notice / Error!',
-                text: <?= json_encode($error_msg) ?>,
-                icon: 'error',
-                confirmButtonColor: '#dc3545'
-            });
-        <?php endif; ?>
-    });
-    </script>
+                Swal.fire({
+                    title: 'Success!',
+                    text: <?= json_encode($success_msg) ?>,
+                    icon: 'success',
+                    confirmButtonColor: '#198754'
+                });
+            <?php endif; ?>
+            <?php if (isset($error_msg)): ?>
+                Swal.fire({
+                    title: 'Notice / Error!',
+                    text: <?= json_encode($error_msg) ?>,
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545'
+                });
+            <?php endif; ?>
+        });
+        </script>
+    <?php endif; ?>
     
-    <div class="card main-card border-0 mb-4">
+    <div class="card main-card border-0 mb-4" style="margin-top: 10px;">
         <div class="card-body p-3">
             <form class="row g-2 align-items-center" method="GET" action="product_management.php">
-                <div class="col-md-5">
-                    <div class="input-group">
+                <div class="col-md-4">
+                    <div class="input-group shadow-sm">
                         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by name or category..." value="<?= htmlspecialchars($search ?? '') ?>">
+                        <input type="text" name="search" class="form-control border-start-0 ps-0 py-2" data-lang-placeholder="prod_search_ph" placeholder="Search by name, category..." value="<?= htmlspecialchars($search ?? '') ?>">
+                        <button type="submit" class="d-none" data-lang="prod_btn_search">Search</button>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <select name="category" class="form-select">
-                        <option value="">-- All Categories --</option>
+                    <select name="category" id="main_category_filter_select" class="form-select py-2 shadow-sm" onchange="this.form.submit()">
+                        <option value="" data-lang="prod_filter_cat">-- All Categories --</option>
                         <?php foreach($categories as $cat): ?>
-                            <option value="<?= htmlspecialchars($cat ?? '') ?>" <?= $cat_filter == $cat ? 'selected' : '' ?>><?= htmlspecialchars($cat ?? '') ?></option>
+                            <option value="<?= htmlspecialchars($cat ?? '') ?>" <?= strtoupper($cat_filter) == strtoupper($cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-dark w-100 fw-bold">APPLY FILTERS</button>
-                    <?php if ($search || $cat_filter): ?>
-                        <a href="product_management.php?clear_filter=1" class="btn btn-outline-secondary fw-bold" title="Reset Filters"><i class="bi bi-x-lg"></i></a>
-                    <?php endif; ?>
+                <div class="col-md-4">
+                    <select name="sub_category" id="sub_category_filter_select" class="form-select py-2 shadow-sm" onchange="this.form.submit()">
+                        <option value="" data-lang="prod_filter_subcat">-- All Sub-Categories --</option>
+                        <?php foreach($sub_categories_list as $sc): ?>
+                            <option value="<?= htmlspecialchars($sc ?? '') ?>" <?= strtoupper($sub_cat_filter) == strtoupper($sc) ? 'selected' : '' ?>><?= htmlspecialchars($sc ?? '') ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </form>
         </div>
@@ -429,14 +611,14 @@ require_once 'includes/header.php';
             <span class="badge bg-light text-dark border"><?= count($products) ?> Total Products</span>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
                             <th class="ps-4">Product Info</th>
-                            <th>Category</th>
+                            <th data-lang="prod_col_cat">Category</th>
                             <th>Permitted Locations</th>
-                            <th class="text-center">UOM</th>
+                            <th class="text-center" data-lang="prod_col_uom">UOM</th>
                             <th>Barcode</th>
                             <th>QR Code</th>
                             <th class="text-center">Pack Size</th>
@@ -457,7 +639,7 @@ require_once 'includes/header.php';
                                     if (strpos($cat_u, 'BEEF') !== false || strpos($cat_u, 'MEAT') !== false || strpos($cat_u, 'FROZEN') !== false || strpos($cat_u, 'ICE') !== false) {
                                         $p_loc = 'Store Area';
                                         $p_sub_loc = 'Freezer';
-                                    } elseif (strpos($cat_u, 'CHILLED') !== false || strpos($cat_u, 'MILK') !== false || strpos($cat_u, 'DAIRY') !== false || strpos($cat_u, 'PST') !== false) {
+                                    } elseif (strpos($cat_u, 'CHILLED') !== false || strpos($cat_u, 'MILK') !== false || strpos($cat_u, 'DAIRY') !== false) {
                                         $p_loc = 'JC Barn';
                                         $p_sub_loc = 'Chiller';
                                     } else {
@@ -478,16 +660,23 @@ require_once 'includes/header.php';
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($p['category'] ?? '') ?></span></td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-uppercase" style="font-size: 0.72rem;"><?= htmlspecialchars($p['category'] ?? '') ?></span>
+                                    <?php if (!empty($p['sub_category'])): ?>
+                                        <div class="mt-1">
+                                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1 fw-bold" style="font-size: 0.68rem;"><i class="bi bi-tag-fill text-muted me-1"></i><?= htmlspecialchars($p['sub_category']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1 align-items-start">
                                         <?php if ($p_loc): ?>
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold" style="font-size: 0.72rem;">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold text-wrap text-start" style="font-size: 0.72rem; max-width: 280px; word-break: break-word; line-height: 1.35;">
                                                 <i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($p_loc) ?>
                                             </span>
                                         <?php endif; ?>
                                         <?php if ($p_sub_loc): ?>
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold" style="font-size: 0.72rem;">
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold text-wrap text-start" style="font-size: 0.72rem; max-width: 280px; word-break: break-word; line-height: 1.35;">
                                                 <i class="bi bi-box-seam me-1"></i><?= htmlspecialchars($p_sub_loc) ?>
                                             </span>
                                         <?php endif; ?>
@@ -531,6 +720,7 @@ require_once 'includes/header.php';
                                             data-id="<?= $p['id'] ?>"
                                             data-name="<?= htmlspecialchars($p['name'] ?? '') ?>"
                                             data-category="<?= htmlspecialchars($p['category'] ?? '') ?>"
+                                            data-sub-category="<?= htmlspecialchars($p['sub_category'] ?? '') ?>"
                                             data-permitted-location="<?= htmlspecialchars($p['permitted_location'] ?? '') ?>"
                                             data-permitted-sub-location="<?= htmlspecialchars($p['permitted_sub_location'] ?? '') ?>"
                                             data-uom="<?= htmlspecialchars($p['uom'] ?? '') ?>"
@@ -579,52 +769,85 @@ require_once 'includes/header.php';
             <input type="hidden" name="action" value="add_category">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold" id="addCategoryModalLabel"><i class="bi bi-folder-plus me-2"></i>Register New Category</h5>
+                    <h5 class="modal-title fw-bold" id="addCategoryModalLabel"><i class="bi bi-folder2-open me-2"></i>Register / Manage Category Locations</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">New Category Name *</label>
-                        <input type="text" name="category_name" class="form-control text-uppercase" placeholder="e.g. FROZEN, SYRUP, BEVERAGE, BEEF" required>
-                        <div class="form-text">Enter the new category code or name to register into the system catalog.</div>
+                        <label class="form-label fw-bold">Select Category to Manage or Enter New Category Name *</label>
+                        <input type="text" name="category_name" id="cat_modal_name_input" list="product_categories_list" class="form-control text-uppercase" placeholder="Select existing category or type new (e.g. UHT, BEEF, FROZEN, COOKING)" required onchange="autoLoadCategoryLocations(this.value)" oninput="autoLoadCategoryLocations(this.value)">
+                        <div class="form-text" data-lang="prod_modal_cat_desc">Choose any previously created category (or type a new name) to view & update its assigned storage locations.</div>
                     </div>
                     
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-primary"><i class="bi bi-geo-alt me-1"></i>Permitted Main Location(s) (Room/Area)</label>
-                            <div class="location-pills-container mb-2">
+                            <label class="form-label fw-bold text-primary"><i class="bi bi-geo-alt me-1"></i><span data-lang="prod_modal_loc_main">Permitted Main Location(s) (Room/Area)</span></label>
+                            <div class="p-2 border rounded bg-light" style="max-height: 160px; overflow-y: auto;">
                                 <?php foreach($main_locations_set as $m_idx => $m_loc): ?>
-                                    <div class="loc-pill-item loc-pill-primary">
-                                        <input class="perm-loc-chk" type="checkbox" name="permitted_location_opts[]" value="<?= htmlspecialchars($m_loc) ?>" id="cat_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>">
-                                        <label class="loc-pill-label" for="cat_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>"><?= htmlspecialchars($m_loc) ?></label>
+                                    <div class="form-check m-0 mb-1">
+                                        <input class="form-check-input perm-loc-chk" type="checkbox" name="permitted_location_opts[]" value="<?= htmlspecialchars($m_loc) ?>" id="cat_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>">
+                                        <label class="form-check-label small fw-bold" for="cat_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>"><?= htmlspecialchars($m_loc) ?></label>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                            <input type="text" name="permitted_location" class="form-control form-control-sm perm-loc-input" list="permitted_main_locations_list" placeholder="Or type custom location(s), comma separated">
+                            <input type="text" name="permitted_location" class="form-control form-control-sm perm-loc-input mt-2" list="permitted_main_locations_list" placeholder="Or type custom location(s), comma separated">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-success"><i class="bi bi-box-seam me-1"></i>Permitted Sub-Location(s) (Equipment)</label>
-                            <div class="location-pills-container mb-2">
-                                <?php foreach($sub_locations_set as $s_idx => $s_loc): ?>
-                                    <div class="loc-pill-item loc-pill-success">
-                                        <input class="perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="cat_sub_chk_<?= md5($s_loc . '_' . $s_idx) ?>">
-                                        <label class="loc-pill-label" for="cat_sub_chk_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                            <label class="form-label fw-bold text-success"><i class="bi bi-box-seam me-1"></i><span data-lang="prod_modal_loc_sub">Permitted Sub-Location(s) (Equipment/Slot)</span></label>
+                            <div class="p-2 border rounded bg-light" style="max-height: 160px; overflow-y: auto;">
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1"><i class="bi bi-shop me-1"></i>Kedai Jomcha Equipment:</div>
+                                <?php foreach(['Freezer (Meat)', 'Freezer (Ice Cream)', 'Chiller 1', 'Chiller 2', 'Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="cat_sub_mms_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="cat_sub_mms_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
                                     </div>
                                 <?php endforeach; ?>
+
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-building me-1"></i>Store Area Equipment:</div>
+                                <?php foreach(['Pallet 1', 'Pallet 2', 'Pallet', 'Chiller 1', 'Chiller 2', 'Freezer 1', 'Freezer 2', 'Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="cat_sub_sa_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="cat_sub_sa_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-cup-hot me-1"></i>JC Barn Equipment:</div>
+                                <?php foreach(['Barn Chiller 1', 'Barn Chiller 2', 'Barn Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="cat_sub_jcb_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="cat_sub_jcb_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <?php if (!empty($custom_sub_locations)): ?>
+                                    <div class="fw-bold text-success small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-plus-circle me-1"></i>Custom / Registered Equipment:</div>
+                                    <?php foreach($custom_sub_locations as $cs_idx => $cs_loc): ?>
+                                        <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                            <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($cs_loc) ?>" id="cat_sub_custom_<?= md5($cs_loc . '_' . $cs_idx) ?>">
+                                            <label class="form-check-label small fw-bold text-success" for="cat_sub_custom_<?= md5($cs_loc . '_' . $cs_idx) ?>"><?= htmlspecialchars($cs_loc) ?></label>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
-                            <input type="text" name="permitted_sub_location" class="form-control form-control-sm perm-sub-input" list="permitted_sub_locations_list" placeholder="Or type custom sub-location(s), comma separated">
+                            <input type="text" name="permitted_sub_location" class="form-control form-control-sm perm-sub-input mt-2" list="permitted_sub_locations_list" placeholder="Or type custom sub-location(s), comma separated">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">First Product / SKU Name (Optional)</label>
+                        <label class="form-label fw-bold text-dark"><i class="bi bi-tags me-1 text-primary"></i><span data-lang="prod_modal_subcat">Sub-Categories / Size Variants (Comma Separated)</span></label>
+                        <input type="text" name="sub_categories" id="cat_modal_sub_cats_input" class="form-control form-control-sm" placeholder="e.g. UHT 100ml, UHT 115ml, UHT 125ml, UHT 180ml, UHT 200ml, UHT 1L">
+                        <div class="form-text small text-muted" data-lang="prod_modal_subcat_desc">List the sub-categories or size variants for this category.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" data-lang="prod_modal_first_prod">First Product / SKU Name (Optional)</label>
                         <input type="text" name="initial_product_name" class="form-control" placeholder="e.g. Frozen Beef Patty 1kg">
-                        <div class="form-text">Leave blank to automatically create a default catalog item for this category.</div>
+                        <div class="form-text" data-lang="prod_modal_first_prod_desc">Leave blank to automatically create a default catalog item for this category.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-check-circle me-1"></i> Save Category</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal"><span data-lang="btn_cancel">Cancel</span></button>
+                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-check-circle me-1"></i> <span data-lang="prod_modal_btn_save_cat">Save Category</span></button>
                 </div>
             </div>
         </form>
@@ -639,75 +862,124 @@ require_once 'includes/header.php';
             <input type="hidden" name="id" id="edit-id">
             <div class="modal-content">
                 <div class="modal-header" style="background: var(--gradient-primary); color: white;">
-                    <h5 class="modal-title fw-bold" id="editProductModalLabel"><i class="bi bi-pencil-square me-2 text-cyan"></i>Edit Product Details</h5>
+                    <h5 class="modal-title fw-bold" id="editProductModalLabel"><i class="bi bi-pencil-square me-2 text-cyan"></i><span data-lang="prod_modal_edit">Edit Product Details</span></h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Product Name</label>
+                        <label class="form-label fw-bold" data-lang="prod_modal_prod_name">Product Name</label>
                         <input type="text" id="edit-name" class="form-control bg-light" readonly>
                     </div>
                     <div class="row g-2">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Category *</label>
-                            <input type="text" name="category" id="edit-category" list="product_categories_list" class="form-control text-uppercase" placeholder="Select or type new category" required>
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-bold" data-lang="prod_modal_main_cat">Main Category *</label>
+                            <select name="category_select" id="edit-category-select" class="form-select" onchange="onCategorySelectChange('edit', this.value)" required>
+                                <option value="" data-lang="prod_modal_sel_cat">-- Select Category --</option>
+                                <?php foreach($categories as $cat): ?>
+                                    <option value="<?= htmlspecialchars($cat ?? '') ?>"><?= htmlspecialchars($cat ?? '') ?></option>
+                                <?php endforeach; ?>
+                                <option value="__new__" class="fw-bold text-primary" data-lang="prod_modal_new_cat">+ Add New Main Category...</option>
+                            </select>
+                            <input type="text" name="category_custom" id="edit-category-custom" class="form-control form-control-sm mt-2 text-uppercase d-none" placeholder="Type new category name...">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">UOM</label>
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-bold" data-lang="prod_modal_sub_size">Sub-Category / Size</label>
+                            <select name="sub_category_select" id="edit-sub-category-select" class="form-select" onchange="onSubCategorySelectChange('edit', this.value)">
+                                <option value="" data-lang="prod_modal_sel_subcat">-- Select Sub-Category --</option>
+                                <option value="__new__" class="fw-bold text-primary" data-lang="prod_modal_new_subcat">+ Add New Sub-Category...</option>
+                            </select>
+                            <input type="text" name="sub_category_custom" id="edit-sub-category-custom" class="form-control form-control-sm mt-2 d-none" placeholder="Type new sub-category...">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label fw-bold" data-lang="prod_modal_uom">UOM</label>
                             <input type="text" name="uom" id="edit-uom" class="form-control" required>
                         </div>
                     </div>
                     
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-primary"><i class="bi bi-geo-alt me-1"></i>Permitted Main Location(s) (Room/Area)</label>
-                            <div class="location-pills-container mb-2">
+                            <label class="form-label fw-bold text-primary"><i class="bi bi-geo-alt me-1"></i><span data-lang="prod_modal_loc_main">Permitted Main Location(s) (Room/Area)</span></label>
+                            <div class="p-2 border rounded bg-light" style="max-height: 160px; overflow-y: auto;">
                                 <?php foreach($main_locations_set as $m_idx => $m_loc): ?>
-                                    <div class="loc-pill-item loc-pill-primary">
-                                        <input class="perm-loc-chk" type="checkbox" name="permitted_location_opts[]" value="<?= htmlspecialchars($m_loc) ?>" id="edit_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>">
-                                        <label class="loc-pill-label" for="edit_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>"><?= htmlspecialchars($m_loc) ?></label>
+                                    <div class="form-check m-0 mb-1">
+                                        <input class="form-check-input perm-loc-chk" type="checkbox" name="permitted_location_opts[]" value="<?= htmlspecialchars($m_loc) ?>" id="edit_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>">
+                                        <label class="form-check-label small fw-bold" for="edit_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>"><?= htmlspecialchars($m_loc) ?></label>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                            <input type="text" name="permitted_location" id="edit-permitted-location" class="form-control form-control-sm perm-loc-input" list="permitted_main_locations_list" placeholder="Or type custom location(s), comma separated">
+                            <input type="text" name="permitted_location" id="edit-permitted-location" class="form-control form-control-sm perm-loc-input mt-2" list="permitted_main_locations_list" placeholder="Or type custom location(s), comma separated">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-success"><i class="bi bi-box-seam me-1"></i>Permitted Sub-Location(s) (Equipment)</label>
-                            <div class="location-pills-container mb-2">
-                                <?php foreach($sub_locations_set as $s_idx => $s_loc): ?>
-                                    <div class="loc-pill-item loc-pill-success">
-                                        <input class="perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="edit_sub_chk_<?= md5($s_loc . '_' . $s_idx) ?>">
-                                        <label class="loc-pill-label" for="edit_sub_chk_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                            <label class="form-label fw-bold text-success"><i class="bi bi-box-seam me-1"></i><span data-lang="prod_modal_loc_sub">Permitted Sub-Location(s) (Equipment/Slot)</span></label>
+                            <div class="p-2 border rounded bg-light" style="max-height: 160px; overflow-y: auto;">
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1"><i class="bi bi-shop me-1"></i>Kedai Jomcha Equipment:</div>
+                                <?php foreach(['Freezer (Meat)', 'Freezer (Ice Cream)', 'Chiller 1', 'Chiller 2', 'Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="edit_sub_mms_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="edit_sub_mms_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
                                     </div>
                                 <?php endforeach; ?>
+
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-building me-1"></i>Store Area Equipment:</div>
+                                <?php foreach(['Pallet 1', 'Pallet 2', 'Pallet', 'Chiller 1', 'Chiller 2', 'Freezer 1', 'Freezer 2', 'Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="edit_sub_sa_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="edit_sub_sa_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-cup-hot me-1"></i>JC Barn Equipment:</div>
+                                <?php foreach(['Barn Chiller 1', 'Barn Chiller 2', 'Barn Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="edit_sub_jcb_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="edit_sub_jcb_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <?php if (!empty($custom_sub_locations)): ?>
+                                    <div class="fw-bold text-success small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-plus-circle me-1"></i>Custom / Registered Equipment:</div>
+                                    <?php foreach($custom_sub_locations as $cs_idx => $cs_loc): ?>
+                                        <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                            <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($cs_loc) ?>" id="edit_sub_custom_<?= md5($cs_loc . '_' . $cs_idx) ?>">
+                                            <label class="form-check-label small fw-bold text-success" for="edit_sub_custom_<?= md5($cs_loc . '_' . $cs_idx) ?>"><?= htmlspecialchars($cs_loc) ?></label>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
-                            <input type="text" name="permitted_sub_location" id="edit-permitted-sub-location" class="form-control form-control-sm perm-sub-input" list="permitted_sub_locations_list" placeholder="Or type custom sub-location(s), comma separated">
+                            <input type="text" name="permitted_sub_location" id="edit-permitted-sub-location" class="form-control form-control-sm perm-sub-input mt-2" list="permitted_sub_locations_list" placeholder="Or type custom sub-location(s), comma separated">
                         </div>
+                    </div>
+
+                    <div class="form-check mb-3 p-2 bg-light border rounded ms-1 me-1">
+                        <input class="form-check-input ms-1 me-2" type="checkbox" name="sync_category" value="1" id="edit_sync_cat">
+                        <label class="form-check-label small fw-bold text-navy" for="edit_sync_cat">
+                            <i class="bi bi-arrow-repeat me-1 text-primary"></i>Sync & apply these storage locations to ALL products under this category
+                        </label>
                     </div>
 
                     <div class="row g-2">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Pack Size</label>
+                            <label class="form-label fw-bold" data-lang="prod_modal_pack_size">Pack Size</label>
                             <input type="number" name="pack_size" id="edit-pack-size" class="form-control" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Pallet Capacity</label>
+                            <label class="form-label fw-bold" data-lang="prod_modal_pallet_cap">Pallet Capacity</label>
                             <input type="number" name="pallet_capacity" id="edit-pallet-capacity" class="form-control" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-primary">Barcode</label>
+                        <label class="form-label fw-bold text-primary" data-lang="prod_modal_barcode">Barcode</label>
                         <input type="text" name="barcode" id="edit-barcode" class="form-control" placeholder="Scan or enter barcode value">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-info">QR Code (Unique SKU ID)</label>
+                        <label class="form-label fw-bold text-info" data-lang="prod_modal_qr">QR Code (Unique SKU ID)</label>
                         <input type="text" name="qrcode" id="edit-qrcode" class="form-control" placeholder="Enter QR code unique ID (e.g. O2CW1CO-0100S32A)">
                         <div class="form-text small text-muted">The unique segment of your QR structure (e.g., text after <strong>GGGITN</strong> and before <strong>/BAN</strong>). Example: <code>O2CW1CO-0100S32A</code></div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="background: var(--mms-navy); border: none;">Save Changes</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal"><span data-lang="btn_cancel">Cancel</span></button>
+                    <button type="submit" class="btn btn-primary" style="background: var(--mms-navy); border: none;"><span data-lang="prod_modal_btn_save_prod">Save Changes</span></button>
                 </div>
             </div>
         </form>
@@ -721,75 +993,124 @@ require_once 'includes/header.php';
             <input type="hidden" name="action" value="add_product">
             <div class="modal-content">
                 <div class="modal-header" style="background: var(--gradient-primary); color: white;">
-                    <h5 class="modal-title fw-bold" id="addProductModalLabel"><i class="bi bi-plus-circle me-2 text-cyan"></i>Add New Product</h5>
+                    <h5 class="modal-title fw-bold" id="addProductModalLabel"><i class="bi bi-plus-circle me-2 text-cyan"></i><span data-lang="prod_add_prod">Add New Product</span></h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Product Name *</label>
+                        <label class="form-label fw-bold" data-lang="prod_modal_prod_name">Product Name *</label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Chocolate Milk 125ml" required>
                     </div>
                     <div class="row g-2">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Category *</label>
-                            <input type="text" name="category" id="add-category" list="product_categories_list" class="form-control text-uppercase" placeholder="Select or type new category (e.g. BEEF, FROZEN, UHT)" required>
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-bold" data-lang="prod_modal_main_cat">Main Category *</label>
+                            <select name="category_select" id="add-category-select" class="form-select" onchange="onCategorySelectChange('add', this.value)" required>
+                                <option value="" data-lang="prod_modal_sel_cat">-- Select Category --</option>
+                                <?php foreach($categories as $cat): ?>
+                                    <option value="<?= htmlspecialchars($cat ?? '') ?>"><?= htmlspecialchars($cat ?? '') ?></option>
+                                <?php endforeach; ?>
+                                <option value="__new__" class="fw-bold text-primary" data-lang="prod_modal_new_cat">+ Add New Main Category...</option>
+                            </select>
+                            <input type="text" name="category_custom" id="add-category-custom" class="form-control form-control-sm mt-2 text-uppercase d-none" placeholder="Type new category name...">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">UOM</label>
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-bold" data-lang="prod_modal_sub_size">Sub-Category / Size</label>
+                            <select name="sub_category_select" id="add-sub-category-select" class="form-select" onchange="onSubCategorySelectChange('add', this.value)">
+                                <option value="" data-lang="prod_modal_sel_subcat">-- Select Sub-Category --</option>
+                                <option value="__new__" class="fw-bold text-primary" data-lang="prod_modal_new_subcat">+ Add New Sub-Category...</option>
+                            </select>
+                            <input type="text" name="sub_category_custom" id="add-sub-category-custom" class="form-control form-control-sm mt-2 d-none" placeholder="Type new sub-category (e.g. UHT 125ml)...">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label fw-bold" data-lang="prod_modal_uom">UOM</label>
                             <input type="text" name="uom" class="form-control" value="Carton" placeholder="Carton / PCS" required>
                         </div>
                     </div>
                     
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-primary"><i class="bi bi-geo-alt me-1"></i>Permitted Main Location(s) (Room/Area)</label>
-                            <div class="location-pills-container mb-2">
+                            <label class="form-label fw-bold text-primary"><i class="bi bi-geo-alt me-1"></i><span data-lang="prod_modal_loc_main">Permitted Main Location(s) (Room/Area)</span></label>
+                            <div class="p-2 border rounded bg-light" style="max-height: 160px; overflow-y: auto;">
                                 <?php foreach($main_locations_set as $m_idx => $m_loc): ?>
-                                    <div class="loc-pill-item loc-pill-primary">
-                                        <input class="perm-loc-chk" type="checkbox" name="permitted_location_opts[]" value="<?= htmlspecialchars($m_loc) ?>" id="add_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>">
-                                        <label class="loc-pill-label" for="add_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>"><?= htmlspecialchars($m_loc) ?></label>
+                                    <div class="form-check m-0 mb-1">
+                                        <input class="form-check-input perm-loc-chk" type="checkbox" name="permitted_location_opts[]" value="<?= htmlspecialchars($m_loc) ?>" id="add_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>">
+                                        <label class="form-check-label small fw-bold" for="add_loc_chk_<?= md5($m_loc . '_' . $m_idx) ?>"><?= htmlspecialchars($m_loc) ?></label>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                            <input type="text" name="permitted_location" class="form-control form-control-sm perm-loc-input" list="permitted_main_locations_list" placeholder="Or type custom location(s), comma separated">
+                            <input type="text" name="permitted_location" class="form-control form-control-sm perm-loc-input mt-2" list="permitted_main_locations_list" placeholder="Or type custom location(s), comma separated">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-success"><i class="bi bi-box-seam me-1"></i>Permitted Sub-Location(s) (Equipment)</label>
-                            <div class="location-pills-container mb-2">
-                                <?php foreach($sub_locations_set as $s_idx => $s_loc): ?>
-                                    <div class="loc-pill-item loc-pill-success">
-                                        <input class="perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="add_sub_chk_<?= md5($s_loc . '_' . $s_idx) ?>">
-                                        <label class="loc-pill-label" for="add_sub_chk_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                            <label class="form-label fw-bold text-success"><i class="bi bi-box-seam me-1"></i><span data-lang="prod_modal_loc_sub">Permitted Sub-Location(s) (Equipment/Slot)</span></label>
+                            <div class="p-2 border rounded bg-light" style="max-height: 160px; overflow-y: auto;">
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1"><i class="bi bi-shop me-1"></i>Kedai Jomcha Equipment:</div>
+                                <?php foreach(['Freezer (Meat)', 'Freezer (Ice Cream)', 'Chiller 1', 'Chiller 2', 'Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="add_sub_mms_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="add_sub_mms_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
                                     </div>
                                 <?php endforeach; ?>
+
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-building me-1"></i>Store Area Equipment:</div>
+                                <?php foreach(['Pallet 1', 'Pallet 2', 'Pallet', 'Chiller 1', 'Chiller 2', 'Freezer 1', 'Freezer 2', 'Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="add_sub_sa_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="add_sub_sa_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <div class="fw-bold text-primary small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-cup-hot me-1"></i>JC Barn Equipment:</div>
+                                <?php foreach(['Barn Chiller 1', 'Barn Chiller 2', 'Barn Rack'] as $s_idx => $s_loc): ?>
+                                    <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                        <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($s_loc) ?>" id="add_sub_jcb_<?= md5($s_loc . '_' . $s_idx) ?>">
+                                        <label class="form-check-label small" for="add_sub_jcb_<?= md5($s_loc . '_' . $s_idx) ?>"><?= htmlspecialchars($s_loc) ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <?php if (!empty($custom_sub_locations)): ?>
+                                    <div class="fw-bold text-success small border-bottom pb-1 mb-1 mt-2"><i class="bi bi-plus-circle me-1"></i>Custom / Registered Equipment:</div>
+                                    <?php foreach($custom_sub_locations as $cs_idx => $cs_loc): ?>
+                                        <div class="form-check form-check-inline m-0 me-2 mb-1">
+                                            <input class="form-check-input perm-sub-chk" type="checkbox" name="permitted_sub_location_opts[]" value="<?= htmlspecialchars($cs_loc) ?>" id="add_sub_custom_<?= md5($cs_loc . '_' . $cs_idx) ?>">
+                                            <label class="form-check-label small fw-bold text-success" for="add_sub_custom_<?= md5($cs_loc . '_' . $cs_idx) ?>"><?= htmlspecialchars($cs_loc) ?></label>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
-                            <input type="text" name="permitted_sub_location" class="form-control form-control-sm perm-sub-input" list="permitted_sub_locations_list" placeholder="Or type custom sub-location(s), comma separated">
+                            <input type="text" name="permitted_sub_location" class="form-control form-control-sm perm-sub-input mt-2" list="permitted_sub_locations_list" placeholder="Or type custom sub-location(s), comma separated">
                         </div>
+                    </div>
+
+                    <div class="form-check mb-3 p-2 bg-light border rounded ms-1 me-1">
+                        <input class="form-check-input ms-1 me-2" type="checkbox" name="sync_category" value="1" id="add_sync_cat">
+                        <label class="form-check-label small fw-bold text-navy" for="add_sync_cat">
+                            <i class="bi bi-arrow-repeat me-1 text-primary"></i>Sync & apply these storage locations to ALL products under this category
+                        </label>
                     </div>
 
                     <div class="row g-2">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Pack Size (Units/Ctn)</label>
+                            <label class="form-label fw-bold" data-lang="prod_modal_pack_size">Pack Size (Units/Ctn)</label>
                             <input type="number" name="pack_size" class="form-control" value="1" min="1" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Pallet Capacity</label>
+                            <label class="form-label fw-bold" data-lang="prod_modal_pallet_cap">Pallet Capacity</label>
                             <input type="number" name="pallet_capacity" class="form-control" value="60" min="1" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-primary">Barcode</label>
+                        <label class="form-label fw-bold text-primary" data-lang="prod_modal_barcode">Barcode</label>
                         <input type="text" name="barcode" class="form-control" placeholder="Scan or enter barcode value (optional)">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-info">QR Code (Unique SKU ID)</label>
+                        <label class="form-label fw-bold text-info" data-lang="prod_modal_qr">QR Code (Unique SKU ID)</label>
                         <input type="text" name="qrcode" class="form-control" placeholder="Enter QR code unique ID (optional)">
                         <div class="form-text small text-muted">The unique segment of your QR structure (e.g., text after <strong>GGGITN</strong> and before <strong>/BAN</strong>). Example: <code>O2CW1CO-0100S32A</code></div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success text-white fw-bold">Add Product</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal"><span data-lang="btn_cancel">Cancel</span></button>
+                    <button type="submit" class="btn btn-success text-white fw-bold" data-lang="prod_modal_btn_add_prod">Add Product</button>
                 </div>
             </div>
         </form>
@@ -833,6 +1154,46 @@ function setMultiSelectFields(modalId, locVal, subLocVal) {
     $(`#${modalId} .perm-sub-input`).val(customSubs.join(', '));
 }
 
+const categoryLocationsMap = <?= json_encode($category_location_map ?? []) ?>;
+
+function autoLoadCategoryLocations(catName) {
+    if (!catName) return;
+    catName = catName.trim().toUpperCase();
+    
+    let match = null;
+    for (let k in categoryLocationsMap) {
+        if (k.toUpperCase() === catName) {
+            match = categoryLocationsMap[k];
+            break;
+        }
+    }
+    
+    if (match) {
+        setMultiSelectFields('addCategoryModal', match.permitted_location || '', match.permitted_sub_location || '');
+        if (document.getElementById('cat_modal_sub_cats_input')) {
+            document.getElementById('cat_modal_sub_cats_input').value = match.sub_categories || '';
+        }
+    }
+}
+
+$(document).ready(function() {
+    const preCat = $('#main_category_filter_select').val();
+    if (preCat) {
+        updateSubCategoryDropdown(preCat, 'sub_category_filter_select', '<?= htmlspecialchars(addslashes($sub_cat_filter ?? '')) ?>');
+    }
+
+    // Auto-tick sync checkbox ONLY when sub-category has input/selected
+    $(document).on('input change', '#add-sub-category', function() {
+        const val = $(this).val().trim();
+        $('#add_sync_cat').prop('checked', val.length > 0);
+    });
+
+    $(document).on('input change', '#edit-sub-category', function() {
+        const val = $(this).val().trim();
+        $('#edit_sync_cat').prop('checked', val.length > 0);
+    });
+});
+
 function openCategoryModal() {
     $('#addCategoryModal form')[0].reset();
     setMultiSelectFields('addCategoryModal', '', '');
@@ -840,20 +1201,129 @@ function openCategoryModal() {
     myModal.show();
 }
 
+function onCategorySelectChange(prefix, selectedCat) {
+    const $customInput = $(`#${prefix}-category-custom`);
+    if (selectedCat === '__new__') {
+        $customInput.removeClass('d-none').focus();
+    } else {
+        $customInput.addClass('d-none').val('');
+    }
+    
+    populateModalSubCategoryDropdown(prefix, selectedCat);
+    
+    if (selectedCat && selectedCat !== '__new__' && typeof categoryLocationsMap !== 'undefined' && categoryLocationsMap[selectedCat]) {
+        const match = categoryLocationsMap[selectedCat];
+        setMultiSelectFields(prefix === 'add' ? 'addProductModal' : 'editProductModal', match.permitted_location || '', match.permitted_sub_location || '');
+    }
+}
+
+function onSubCategorySelectChange(prefix, selectedSub) {
+    const $customInput = $(`#${prefix}-sub-category-custom`);
+    const $syncChk = $(`#${prefix}_sync_cat`);
+    
+    if (selectedSub === '__new__') {
+        $customInput.removeClass('d-none').focus();
+        $syncChk.prop('checked', true);
+    } else {
+        $customInput.addClass('d-none').val('');
+        $syncChk.prop('checked', selectedSub.trim().length > 0);
+    }
+}
+
+function populateModalSubCategoryDropdown(prefix, selectedCat, preselectedSub = '') {
+    const $subSelect = $(`#${prefix}-sub-category-select`);
+    const $customInput = $(`#${prefix}-sub-category-custom`);
+    if (!$subSelect.length) return;
+    
+    $subSelect.empty();
+    $subSelect.append('<option value="" data-lang="prod_modal_sel_subcat">-- Select Sub-Category --</option>');
+    
+    let allowedSubs = [];
+    selectedCat = (selectedCat || '').trim().toUpperCase();
+    
+    if (selectedCat !== '' && selectedCat !== '__NEW__') {
+        for (let k in catSubcatMap) {
+            if (k.toUpperCase() === selectedCat) {
+                allowedSubs = catSubcatMap[k] || [];
+                break;
+            }
+        }
+    }
+    
+    allowedSubs.sort();
+    let isMatch = false;
+    allowedSubs.forEach(s => {
+        const isSel = (s.toUpperCase() === (preselectedSub || '').trim().toUpperCase());
+        if (isSel) isMatch = true;
+        $subSelect.append(`<option value="${s}" ${isSel ? 'selected' : ''}>${s}</option>`);
+    });
+    
+    $subSelect.append('<option value="__new__" class="fw-bold text-primary" data-lang="prod_modal_new_subcat">+ Add New Sub-Category...</option>');
+    
+    if (preselectedSub && !isMatch && preselectedSub.trim() !== '') {
+        $subSelect.val('__new__');
+        $customInput.removeClass('d-none').val(preselectedSub);
+    } else {
+        $customInput.addClass('d-none').val('');
+    }
+}
+
 function openAddModal(prefilledCategory = '') {
     $('#addProductModal form')[0].reset();
     setMultiSelectFields('addProductModal', '', '');
+    $('#add_sync_cat').prop('checked', false);
+    
     if (prefilledCategory && prefilledCategory !== '__new__') {
-        $('#add-category').val(prefilledCategory);
+        $('#add-category-select').val(prefilledCategory);
+        onCategorySelectChange('add', prefilledCategory);
+    } else {
+        $('#add-category-select').val('');
+        onCategorySelectChange('add', '');
     }
+    
     const myModal = new bootstrap.Modal(document.getElementById('addProductModal'));
     myModal.show();
+}
+
+const catSubcatMap = <?= json_encode($cat_subcat_map ?? []) ?>;
+
+function updateSubCategoryDropdown(catSelectVal, subCatSelectId, currentSelectedSubCat = '<?= htmlspecialchars(addslashes($sub_cat_filter ?? '')) ?>') {
+    const $subSelect = $('#' + subCatSelectId);
+    if (!$subSelect.length) return;
+    
+    $subSelect.empty();
+    $subSelect.append('<option value="" data-lang="prod_filter_subcat">-- All Sub-Categories --</option>');
+    
+    let allowedSubs = [];
+    catSelectVal = (catSelectVal || '').trim().toUpperCase();
+    
+    if (catSelectVal !== '') {
+        for (let k in catSubcatMap) {
+            if (k.toUpperCase() === catSelectVal) {
+                allowedSubs = catSubcatMap[k] || [];
+                break;
+            }
+        }
+    } else {
+        for (let k in catSubcatMap) {
+            (catSubcatMap[k] || []).forEach(s => {
+                if (!allowedSubs.includes(s)) allowedSubs.push(s);
+            });
+        }
+    }
+    
+    allowedSubs.sort();
+    allowedSubs.forEach(s => {
+        const isSel = (s.toUpperCase() === (currentSelectedSubCat || '').toUpperCase()) ? 'selected' : '';
+        $subSelect.append(`<option value="${s}" ${isSel}>${s}</option>`);
+    });
 }
 
 function openEditModal(btn) {
     const id = $(btn).data('id');
     const name = $(btn).data('name');
-    const category = $(btn).data('category');
+    const category = $(btn).data('category') || '';
+    const subCategory = $(btn).data('sub-category') || '';
     const permittedLocation = $(btn).data('permitted-location');
     const permittedSubLocation = $(btn).data('permitted-sub-location');
     const uom = $(btn).data('uom');
@@ -864,12 +1334,32 @@ function openEditModal(btn) {
     
     $('#edit-id').val(id);
     $('#edit-name').val(name);
-    $('#edit-category').val(category);
     $('#edit-uom').val(uom);
     $('#edit-pack-size').val(packSize);
     $('#edit-pallet-capacity').val(palletCapacity);
     $('#edit-barcode').val(barcode);
     $('#edit-qrcode').val(qrcode);
+
+    // Set Category Dropdown
+    let catMatched = false;
+    $('#edit-category-select option').each(function() {
+        if ($(this).val().toUpperCase() === category.toUpperCase()) {
+            $(this).prop('selected', true);
+            catMatched = true;
+        }
+    });
+    
+    if (!catMatched && category !== '') {
+        $('#edit-category-select').val('__new__');
+        $('#edit-category-custom').removeClass('d-none').val(category);
+    } else {
+        $('#edit-category-custom').addClass('d-none').val('');
+    }
+
+    populateModalSubCategoryDropdown('edit', category, subCategory);
+
+    // Auto-tick sync checkbox ONLY if sub-category is selected/filled
+    $('#edit_sync_cat').prop('checked', !!(subCategory && subCategory.trim().length > 0));
 
     setMultiSelectFields('editProductModal', permittedLocation, permittedSubLocation);
     
