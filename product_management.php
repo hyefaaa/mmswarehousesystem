@@ -530,8 +530,8 @@ require_once 'includes/header.php';
             </div>
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
-                <button type="button" class="btn btn-outline-light fw-bold" onclick="openCategoryModal()"><i class="bi bi-folder2-open me-1"></i> Manage / New Category</button>
-                <button type="button" class="btn btn-success fw-bold text-white" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> Add Product</button>
+                <button type="button" class="btn btn-outline-light fw-bold" onclick="openCategoryModal()"><i class="bi bi-folder2-open me-1"></i> <span data-lang="btn_manage_category">Manage / New Category</span></button>
+                <button type="button" class="btn btn-success fw-bold text-white" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> <span data-lang="btn_add_product">Add Product</span></button>
             </div>
         </div>
     </div>
@@ -568,35 +568,31 @@ require_once 'includes/header.php';
                 Swal.fire({
                     title: 'Notice / Error!',
                     text: <?= json_encode($error_msg) ?>,
-                    icon: 'error',
-                    confirmButtonColor: '#dc3545'
+                    icon: 'warning',
+                    confirmButtonColor: '#0d6efd'
                 });
             <?php endif; ?>
         });
         </script>
     <?php endif; ?>
     
-    <div class="card main-card border-0 mb-4" style="margin-top: 10px;">
-        <div class="card-body p-3">
-            <form class="row g-2 align-items-center" method="GET" action="product_management.php">
+    <div class="card border-0 mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
                 <div class="col-md-4">
-                    <div class="input-group shadow-sm">
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0 ps-0 py-2" data-lang-placeholder="prod_search_ph" placeholder="Search by name, category..." value="<?= htmlspecialchars($search ?? '') ?>">
-                        <button type="submit" class="d-none" data-lang="prod_btn_search">Search</button>
-                    </div>
+                    <input type="text" name="search" class="form-control" data-lang-placeholder="inv_filter_product" placeholder="Search product name, category..." value="<?= htmlspecialchars($search ?? '') ?>">
                 </div>
-                <div class="col-md-4">
-                    <select name="category" id="main_category_filter_select" class="form-select py-2 shadow-sm" onchange="this.form.submit()">
-                        <option value="" data-lang="prod_filter_cat">-- All Categories --</option>
-                        <?php foreach($categories as $cat): ?>
-                            <option value="<?= htmlspecialchars($cat ?? '') ?>" <?= strtoupper($cat_filter) == strtoupper($cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat ?? '') ?></option>
+                <div class="col-md-3">
+                    <select name="category" class="form-select" onchange="this.form.submit()">
+                        <option value="" data-lang="inv_filter_all">-- All Categories --</option>
+                        <?php foreach($categories as $c): ?>
+                            <option value="<?= htmlspecialchars($c ?? '') ?>" <?= strtoupper($cat_filter) == strtoupper($c) ? 'selected' : '' ?>><?= htmlspecialchars($c ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <select name="sub_category" id="sub_category_filter_select" class="form-select py-2 shadow-sm" onchange="this.form.submit()">
-                        <option value="" data-lang="prod_filter_subcat">-- All Sub-Categories --</option>
+                <div class="col-md-3">
+                    <select name="sub_category" class="form-select" onchange="this.form.submit()">
+                        <option value="" data-lang="inv_filter_all">-- All Sub-Categories --</option>
                         <?php foreach($sub_categories_list as $sc): ?>
                             <option value="<?= htmlspecialchars($sc ?? '') ?>" <?= strtoupper($sub_cat_filter) == strtoupper($sc) ? 'selected' : '' ?>><?= htmlspecialchars($sc ?? '') ?></option>
                         <?php endforeach; ?>
@@ -616,16 +612,16 @@ require_once 'includes/header.php';
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4">Product Info</th>
-                            <th data-lang="prod_col_cat">Category</th>
-                            <th>Permitted Locations</th>
+                            <th class="ps-4" data-lang="col_prod_info">Product Info</th>
+                            <th data-lang="inv_col_category">Category</th>
+                            <th data-lang="col_permitted_loc">Permitted Locations</th>
                             <th class="text-center" data-lang="prod_col_uom">UOM</th>
-                            <th>Barcode</th>
-                            <th>QR Code</th>
-                            <th class="text-center">Pack Size</th>
-                            <th class="text-center">Pallet Cap</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th data-lang="col_barcode">Barcode</th>
+                            <th data-lang="col_qr_code">QR Code</th>
+                            <th class="text-center" data-lang="col_pack_size">Pack Size</th>
+                            <th class="text-center" data-lang="col_pallet_cap">Pallet Cap</th>
+                            <th class="text-center" data-lang="lbl_status">Status</th>
+                            <th class="text-center pe-4" data-lang="lbl_action">Actions</th>
                         </tr>
                     </thead>
                     <tbody>

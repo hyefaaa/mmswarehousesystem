@@ -20,6 +20,49 @@ if (function_exists('check_write_permission')) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+    (function() {
+        const savedTheme = localStorage.getItem('mms_theme');
+        const theme = savedTheme ? savedTheme : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-bs-theme', theme);
+    })();
+    const MMS_THEME = {
+        get: function() {
+            return document.documentElement.getAttribute('data-theme') || 'light';
+        },
+        set: function(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('mms_theme', theme);
+            this.updateUI(theme);
+        },
+        toggle: function() {
+            const current = this.get();
+            const next = current === 'dark' ? 'light' : 'dark';
+            this.set(next);
+        },
+        updateUI: function(theme) {
+            const btn = document.getElementById('themeToggleBtn');
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if (!icon) return;
+            
+            if (theme === 'dark') {
+                icon.className = 'bi bi-sun-fill text-warning';
+                if (text) text.textContent = 'Light';
+                if (btn) btn.setAttribute('title', 'Tukar ke Tema Cerah (Light Mode)');
+            } else {
+                icon.className = 'bi bi-moon-stars-fill text-info';
+                if (text) text.textContent = 'Dark';
+                if (btn) btn.setAttribute('title', 'Tukar ke Tema Gelap (Dark Mode)');
+            }
+        }
+    };
+    document.addEventListener("DOMContentLoaded", function() {
+        MMS_THEME.updateUI(MMS_THEME.get());
+    });
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title ?? '') ?></title>
@@ -231,8 +274,10 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <?php if ($is_admin || (($_SESSION['role'] ?? '') === 'staff_jomcha') || in_array('outbound_reconcile', $allowed_view_modules)): ?>
                             <li><a class="dropdown-item" href="jomcha_request_stock.php"><i class="bi bi-cart-plus me-1 text-primary"></i><span>Mohon Stok (Jomcha)</span></a></li>
                         <?php endif; ?>
-                        <?php if ($is_admin || (($_SESSION['role'] ?? '') === 'staff_jomcha')): ?>
+                        <?php if (($_SESSION['role'] ?? '') === 'staff_jomcha'): ?>
                             <li><a class="dropdown-item" href="jomcha_stock_take.php"><i class="bi bi-clipboard-check me-1 text-purple"></i><span>Kiraan Stok (Jomcha)</span></a></li>
+                        <?php endif; ?>
+                        <?php if ($is_admin || (($_SESSION['role'] ?? '') === 'staff_jomcha')): ?>
                             <li><a class="dropdown-item" href="jomcha_monitor_stock.php"><i class="bi bi-display me-1 text-success"></i><span>Pantau Stok (Jomcha)</span></a></li>
                         <?php endif; ?>
                         <?php if ($is_admin || in_array('pss', $allowed_view_modules)): ?>
@@ -312,8 +357,14 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 <?php endif; ?>
             </ul>
 
-            <!-- Language Toggle + Profile + Logout -->
+            <!-- Language Toggle + Theme Toggle + Profile + Logout -->
             <div class="d-flex align-items-center gap-2">
+
+                <!-- ===== THEME TOGGLE ===== -->
+                <button id="themeToggleBtn" type="button" class="theme-toggle-btn me-1" onclick="MMS_THEME.toggle()" title="Tukar Tema (Light/Dark)">
+                    <i class="bi bi-moon-stars-fill text-info" id="themeIcon"></i>
+                    <span id="themeText" class="d-none d-sm-inline">Dark</span>
+                </button>
 
                 <!-- ===== LANGUAGE TOGGLE ===== -->
                 <div class="d-flex align-items-center" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 3px 4px; gap: 2px;">

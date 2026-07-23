@@ -12,8 +12,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $role = $_SESSION['role'] ?? '';
-if (!in_array(strtolower($role), ['admin', 'staff', 'intern', 'pss_admin', 'staff_jomcha'])) {
-    header("Location: login.php");
+if (strtolower($role) !== 'staff_jomcha') {
+    header("Location: index.php");
     exit;
 }
 

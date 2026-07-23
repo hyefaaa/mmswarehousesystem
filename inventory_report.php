@@ -140,11 +140,11 @@ require_once 'includes/header.php';
 
     /* ============ STAT CARDS ============ */
     .stat-box {
-        background: white;
+        background: var(--mms-card-bg, #ffffff);
         border-radius: 16px;
         padding: 20px 24px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--mms-border-color, #e2e8f0);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
         overflow: hidden;
@@ -161,14 +161,14 @@ require_once 'includes/header.php';
     .stat-box.green::before  { background: #10b981; }
     .stat-box.orange::before { background: #f59e0b; }
     .stat-box.red::before    { background: #ef4444; }
-    .stat-num { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-    .stat-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; }
+    .stat-num { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; color: var(--mms-text-main, #334155); }
+    .stat-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--mms-text-muted, #64748b); }
 
     /* ============ FILTER PANEL ============ */
     .filter-card {
-        background: white;
+        background: var(--mms-card-bg, #ffffff);
         border-radius: 14px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--mms-border-color, #e2e8f0);
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         padding: 20px 24px;
         margin-bottom: 20px;
@@ -178,7 +178,7 @@ require_once 'includes/header.php';
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.6px;
-        color: #94a3b8;
+        color: var(--mms-text-muted, #94a3b8);
         margin-bottom: 14px;
     }
 
@@ -201,16 +201,16 @@ require_once 'includes/header.php';
 
     /* ============ INVENTORY TABLE ============ */
     .inv-table-wrap {
-        background: white;
+        background: var(--mms-card-bg, #ffffff);
         border-radius: 14px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--mms-border-color, #e2e8f0);
         overflow: hidden;
         box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     }
     .inv-table-wrap .table-header {
-        background: #f8fafc;
+        background: var(--mms-header-bg, #f8fafc);
         padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid var(--mms-border-color, #e2e8f0);
         display: flex;
         align-items: center;
         justify-content: space-between;

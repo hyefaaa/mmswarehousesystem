@@ -37,7 +37,7 @@ require_once 'includes/header.php';
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
 
-                <button class="btn btn-success fw-bold px-4" onclick="submitStockTake()"><i class="bi bi-cloud-check-fill me-1"></i> Save Adjustments</button>
+                <button class="btn btn-success fw-bold px-4" onclick="submitStockTake()"><i class="bi bi-cloud-check-fill me-1"></i> <span data-lang="btn_save_adjustments">Save Adjustments</span></button>
             </div>
         </div>
     </div>
@@ -57,13 +57,13 @@ require_once 'includes/header.php';
                     <table class="table table-bordered table-hover mb-0 align-middle">
                         <thead class="table-dark">
                             <tr>
-                                <th width="25%">Product Name</th>
-                                <th width="10%">Batch No</th>
-                                <th width="10%">Expiry</th>
-                                <th width="10%">System Qty</th>
-                                <th width="12%">Physical Qty</th>
-                                <th width="10%">Variance</th>
-                                <th width="23%">Reason / Remarks</th>
+                                <th width="25%" data-lang="inv_col_product">Product Name</th>
+                                <th width="10%" data-lang="inv_col_batch">Batch No</th>
+                                <th width="10%" data-lang="inv_col_expiry">Expiry</th>
+                                <th width="10%" data-lang="col_system_qty">System Qty</th>
+                                <th width="12%" data-lang="col_physical_qty">Physical Qty</th>
+                                <th width="10%" data-lang="col_variance">Variance</th>
+                                <th width="23%" data-lang="col_reason_remarks">Reason / Remarks</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -122,7 +122,7 @@ require_once 'includes/header.php';
         </div>
         
         <div class="d-grid mt-4 mb-5">
-            <button type="submit" class="btn btn-success btn-lg py-3 fw-bold">✅ CONFIRM & UPDATE STOCK</button>
+            <button type="submit" class="btn btn-success btn-lg py-3 fw-bold">✅ <span data-lang="btn_confirm_update_stock">CONFIRM & UPDATE STOCK</span></button>
         </div>
     </form>
 </div>

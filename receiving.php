@@ -31,17 +31,41 @@ if (!$is_staff) {
 $message = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $category    = htmlspecialchars(strip_tags($_POST['category'] ?? ''));
-    $product_id  = (int)($_POST['product_id'] ?? 0);
-    $lot_no      = htmlspecialchars(strip_tags($_POST['lot_no'] ?? ''));
-    $expiry_date = htmlspecialchars(strip_tags($_POST['expiry_date'] ?? ''));
-    $batch_no    = htmlspecialchars(strip_tags($_POST['batch_no'] ?? ''));
-    $pallet_code = htmlspecialchars(strip_tags($_POST['pallet_type'] ?? 'none'));
-    $qty         = (int)($_POST['qty'] ?? 0);
+    $category           = htmlspecialchars(strip_tags($_POST['category'] ?? ''));
+    $product_id         = (int)($_POST['product_id'] ?? 0);
+    $lot_no             = htmlspecialchars(strip_tags($_POST['lot_no'] ?? ''));
+    $expiry_date        = htmlspecialchars(strip_tags($_POST['expiry_date'] ?? ''));
+    $batch_no           = htmlspecialchars(strip_tags($_POST['batch_no'] ?? ''));
+    $pallet_code        = htmlspecialchars(strip_tags($_POST['pallet_type'] ?? 'none'));
+    $qty                = (int)($_POST['qty'] ?? 0);
+
+    // Delivery & Logistics Metadata (matching receiving_multi.php)
+    $supplier_do        = trim(htmlspecialchars(strip_tags($_POST['supplier_do'] ?? '')));
+    if (empty($supplier_do)) {
+        $supplier_do    = 'SR-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+    }
+    $po_number          = trim(htmlspecialchars(strip_tags($_POST['po_number'] ?? '')));
+    
+    $received_date_raw  = trim(htmlspecialchars(strip_tags($_POST['received_date'] ?? '')));
+    $received_date      = !empty($received_date_raw) ? date('Y-m-d', strtotime($received_date_raw)) : date('Y-m-d');
+    
+    $ordered_date_raw   = trim(htmlspecialchars(strip_tags($_POST['ordered_date'] ?? '')));
+    $ordered_date       = !empty($ordered_date_raw) ? date('Y-m-d', strtotime($ordered_date_raw)) : null;
+
+    $transporter_name   = trim(htmlspecialchars(strip_tags($_POST['transporter_company'] ?? '')));
+    $driver_name        = trim(htmlspecialchars(strip_tags($_POST['driver_name'] ?? '')));
+    $vehicle_no         = trim(strtoupper(htmlspecialchars(strip_tags($_POST['vehicle_no'] ?? ''))));
+    $arrival_time       = trim(htmlspecialchars(strip_tags($_POST['arrival_time'] ?? '')));
 
     if (empty($category) || empty($product_id) || empty($batch_no) || empty($qty) || empty($expiry_date)) {
         $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-x-circle-fill me-2"></i>Sila lengkapkan semua ruangan wajib.</div>';
     } else {
+        // Self-healing columns check BEFORE transaction (DDL statements cause implicit COMMIT in MySQL)
+        try { $pdo->exec("ALTER TABLE `inbound_logs` ADD COLUMN `transporter_name` VARCHAR(100) DEFAULT NULL"); } catch (Exception $ex) {}
+        try { $pdo->exec("ALTER TABLE `inbound_logs` ADD COLUMN `driver_name` VARCHAR(100) DEFAULT NULL"); } catch (Exception $ex) {}
+        try { $pdo->exec("ALTER TABLE `inbound_logs` ADD COLUMN `vehicle_plate` VARCHAR(50) DEFAULT NULL"); } catch (Exception $ex) {}
+        try { $pdo->exec("ALTER TABLE `inbound_logs` ADD COLUMN `arrival_time` VARCHAR(20) DEFAULT NULL"); } catch (Exception $ex) {}
+
         try {
             $pdo->beginTransaction();
 
@@ -54,23 +78,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $p_type = $pallet_map[strtolower($pallet_code)] ?? 'No Pallet';
 
             // 1. Rekod header inbound
-            $supplier_do = 'SR-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
             $pallet_red = ($pallet_code === 'red') ? 1 : 0;
             $pallet_orange = ($pallet_code === 'orange') ? 1 : 0;
             $pallet_black = ($pallet_code === 'black') ? 1 : 0;
             $pallet_ffm = ($pallet_code === 'ffm') ? 1 : 0;
             $pallet_lhp = ($pallet_code === 'lhp') ? 1 : 0;
             $pallet_plain = ($pallet_code === 'plain') ? 1 : 0;
-            $pallet_remarks = "Single GRN: Lot $lot_no";
+            $pallet_remarks = "Single GRN: Lot $lot_no" . ($po_number ? " | PO: $po_number" : "");
 
             $stmtHeader = $pdo->prepare("INSERT INTO inbound_logs 
                 (category, received_date, supplier_do, remarks, 
                  pallet_qty_loscam_red, pallet_qty_ffm_orange, pallet_qty_plastic_black,
-                 pallet_qty_ffm_green, pallet_qty_lhp_green, pallet_qty_plain_wood) 
-                VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)");
+                 pallet_qty_ffm_green, pallet_qty_lhp_green, pallet_qty_plain_wood,
+                 transporter_name, driver_name, vehicle_plate, arrival_time) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmtHeader->execute([
-                $category, $supplier_do, $pallet_remarks,
-                $pallet_red, $pallet_orange, $pallet_black, $pallet_ffm, $pallet_lhp, $pallet_plain
+                $category, $received_date, $supplier_do, $pallet_remarks,
+                $pallet_red, $pallet_orange, $pallet_black, $pallet_ffm, $pallet_lhp, $pallet_plain,
+                $transporter_name, $driver_name, $vehicle_no, $arrival_time
             ]);
             $inbound_id = $pdo->lastInsertId();
 
@@ -78,8 +103,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($pallet_code !== 'none') {
                 $stmtPalletLedger = $pdo->prepare("INSERT INTO pallet_ledger 
                     (transaction_date, transaction_type, pallet_code, qty, reference_no, notes) 
-                    VALUES (NOW(), 'IN', ?, 1, ?, ?)");
+                    VALUES (?, 'IN', ?, 1, ?, ?)");
                 $stmtPalletLedger->execute([
+                    $received_date . ' ' . date('H:i:s'),
                     $pallet_code,
                     $supplier_do,
                     "Received via Single-Receive (GRN ID: $inbound_id)"
@@ -106,7 +132,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $pdo->commit();
             $message = '<div class="alert alert-success border-0 shadow-sm"><i class="bi bi-check-circle-fill me-2"></i>Stok berjaya diterima! (GRN ID: ' . $inbound_id . ')</div>';
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $message = '<div class="alert alert-danger border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ralat menyimpan data: ' . $e->getMessage() . '</div>';
         }
     }
@@ -145,47 +173,66 @@ require_once 'includes/header.php';
 
     .form-container { 
         width: 100%;
-        max-width: 650px; 
-        background: white; 
+        max-width: 900px; 
+        background: var(--mms-card-bg, #ffffff); 
+        color: var(--mms-text-primary, #0f172a);
         padding: 40px; 
         border-radius: 24px; 
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03); 
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        border: 1px solid var(--mms-border-color, rgba(226, 232, 240, 0.8));
     }
-    .readonly-input { background-color: #f8fafc !important; cursor: not-allowed; font-weight: 700; color: #475569 !important; border: 1.5px solid #e2e8f0; }
+    .readonly-input { background-color: var(--bs-tertiary-bg, #f8fafc) !important; cursor: not-allowed; font-weight: 700; color: var(--mms-text-primary, #475569) !important; border: 1.5px solid var(--mms-border-color, #e2e8f0); }
     .form-control, .form-select {
-        border: 1.5px solid #cbd5e1;
+        border: 1.5px solid var(--mms-border-color, #cbd5e1);
         border-radius: 12px;
-        height: 42px;
+        height: 44px;
+        font-weight: 600;
+        background-color: var(--bs-body-bg, #ffffff);
+        color: var(--mms-text-primary, #0f172a);
     }
     .form-control:focus, .form-select:focus {
         border-color: #3b82f6;
         box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.15);
     }
     .form-label {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #475569;
+        color: var(--mms-text-secondary, #64748b);
+        margin-bottom: 6px;
     }
-    .select2-container .select2-selection--single {
-        height: 42px;
-        border: 1.5px solid #cbd5e1;
-        display: flex;
-        align-items: center;
-        font-weight: 600;
-        font-size: 0.9rem;
+    .step-section-card {
+        background: var(--bs-tertiary-bg, #f8fafc);
+        border: 1px solid var(--mms-border-color, #e2e8f0);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .btn-submit-green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: #ffffff;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 14px;
         border-radius: 12px;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 40px;
+    .btn-submit-green:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+        color: #ffffff;
     }
     
     @media (max-width: 576px) {
         .form-container {
-            padding: 24px 20px;
+            padding: 24px 18px;
             border-radius: 20px;
+        }
+        .step-section-card {
+            padding: 16px;
         }
         .content-wrapper {
             padding: 15px 10px;
@@ -214,83 +261,141 @@ require_once 'includes/header.php';
 
         <form action="receiving.php" method="post" id="singleReceiveForm">
             
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="lbl_category">Category</label>
-                    <select name="category" id="category" class="form-select" onchange="filterProducts()" required>
-                        <option value="UHT" selected>UHT (Retail)</option>
-                        <option value="PSS">PSS (School)</option>
-                        <option value="PST">PST (Fresh/Dairy)</option>
-                    </select>
+            <!-- Step 1: Delivery & Logistics Information -->
+            <div class="step-section-card shadow-sm">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-primary bg-opacity-10 text-primary p-2 me-2 rounded-circle"><i class="bi bi-truck fs-5"></i></span>
+                    <h6 class="fw-800 text-primary mb-0 text-uppercase">1. Delivery & Logistics Information</h6>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="recv_lbl_select_product">Select Product</label>
-                    <select name="product_id" id="product_id" class="form-select" required>
-                        <!-- Pilihan akan dimasukkan melalui JavaScript -->
-                    </select>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-primary">Supplier DO No. *</label>
+                        <input type="text" name="supplier_do" id="supplier_do" class="form-control text-uppercase fw-bold" placeholder="e.g. DO-998811" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">PO Number</label>
+                        <input type="text" name="po_number" id="po_number" class="form-control text-uppercase" placeholder="e.g. PO-12345">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Received Date</label>
+                        <input type="date" name="received_date" id="received_date" class="form-control fw-bold text-primary" value="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Ordered Date</label>
+                        <input type="date" name="ordered_date" id="ordered_date" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Transporter</label>
+                        <input type="text" name="transporter_company" id="transporter_company" class="form-control" placeholder="e.g. Thong Nam">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Driver Name</label>
+                        <input type="text" name="driver_name" id="driver_name" class="form-control" placeholder="e.g. Ahmad">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Vehicle No</label>
+                        <input type="text" name="vehicle_no" id="vehicle_no" class="form-control text-uppercase" placeholder="e.g. ABC 1234">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Arrival Time</label>
+                        <input type="time" name="arrival_time" id="arrival_time" class="form-control">
+                    </div>
                 </div>
             </div>
 
-            <div class="mb-4 bg-light p-3 rounded border border-primary border-opacity-25">
-                <label class="form-label fw-bold text-primary mb-1 d-flex justify-content-between align-items-center">
-                    <span data-lang="recv_lbl_scan_lot">SCAN LOT NO:</span>
-                    <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="openCamera()">
-                        <i class="bi bi-camera-fill me-1"></i> <span data-lang="recv_btn_scan_camera">Scan Camera</span>
-                    </button>
-                </label>
-                <input type="text" name="lot_no" id="lot_no" class="form-control border-primary text-uppercase fw-bold" placeholder="e.g. 260831-MFB010-PP003" data-lang-placeholder="recv_lot_placeholder" oninput="parseLotNo()" autocomplete="off">
-                <div class="form-text small text-muted" data-lang="recv_lot_help">Mengisi butiran di bawah secara automatik daripada lot/QR barcode.</div>
-                <div class="form-check form-switch mt-2">
-                    <input class="form-check-input" type="checkbox" id="hardwareScannerMode" checked>
-                    <label class="form-check-label small fw-bold text-muted" for="hardwareScannerMode">
-                        🎯 Hardware Scanner Mode (Auto-Submit)
+            <!-- Step 2: Product Selection & Barcode Scan -->
+            <div class="step-section-card shadow-sm">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-info bg-opacity-10 text-info p-2 me-2 rounded-circle"><i class="bi bi-qr-code-scan fs-5"></i></span>
+                    <h6 class="fw-800 text-primary mb-0 text-uppercase">2. Product & Barcode Scan</h6>
+                </div>
+                
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="lbl_category">Category</label>
+                        <select name="category" id="category" class="form-select" onchange="filterProducts()" required>
+                            <option value="UHT" selected>UHT (Retail)</option>
+                            <option value="PSS">PSS (School)</option>
+                            <option value="PST">PST (Fresh/Dairy)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="recv_lbl_select_product">Select Product</label>
+                        <select name="product_id" id="product_id" class="form-select" required>
+                            <!-- Pilihan akan dimasukkan melalui JavaScript -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-white rounded-3 border border-primary border-opacity-25 shadow-sm">
+                    <label class="form-label text-primary mb-2 d-flex justify-content-between align-items-center">
+                        <span data-lang="recv_lbl_scan_lot"><i class="bi bi-barcode me-1"></i>SCAN LOT NO:</span>
+                        <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1 rounded-pill" onclick="openCamera()">
+                            <i class="bi bi-camera-fill me-1"></i> <span data-lang="recv_btn_scan_camera">Scan Camera</span>
+                        </button>
                     </label>
+                    <input type="text" name="lot_no" id="lot_no" class="form-control border-primary text-uppercase fw-bold fs-6" placeholder="e.g. 260831-MFB010-PP003" data-lang-placeholder="recv_lot_placeholder" oninput="parseLotNo()" autocomplete="off">
+                    <div class="form-text small text-muted mt-2" data-lang="recv_lot_help">Mengisi butiran di bawah secara automatik daripada lot/QR barcode.</div>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="hardwareScannerMode" checked>
+                        <label class="form-check-label small fw-bold text-muted" for="hardwareScannerMode">
+                            🎯 Hardware Scanner Mode (Auto-Submit)
+                        </label>
+                    </div>
                 </div>
             </div>
 
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="inv_col_expiry">Expiry Date</label>
-                    <input type="date" name="expiry_date" id="expiry_date" class="form-control" required>
+            <!-- Step 3: Batch Details & Stock Quantity -->
+            <div class="step-section-card shadow-sm">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-success bg-opacity-10 text-success p-2 me-2 rounded-circle"><i class="bi bi-box-seam fs-5"></i></span>
+                    <h6 class="fw-800 text-primary mb-0 text-uppercase">3. Batch Details & Quantity</h6>
+                </div>
+                
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="inv_col_expiry">Expiry Date</label>
+                        <input type="date" name="expiry_date" id="expiry_date" class="form-control fw-bold" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="dash_batch_no">Batch No</label>
+                        <input type="text" name="batch_no" id="batch_no" class="form-control text-center fw-bold" required>
+                    </div>
                 </div>
 
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="dash_batch_no">Batch No</label>
-                    <input type="text" name="batch_no" id="batch_no" class="form-control text-center" required>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="recv_lbl_shelf_life">Shelf Life (Months)</label>
+                        <input type="text" id="shelf_life" class="form-control readonly-input text-center" readonly>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="inv_col_pallet">Pallet Type</label>
+                        <select name="pallet_type" id="pallet_type" class="form-select" required>
+                            <option value="none" data-lang="pallet_none">None</option>
+                            <?php foreach ($pallet_types as $pt): ?>
+                                <option value="<?= htmlspecialchars($pt['code'] ?? '') ?>"><?= htmlspecialchars($pt['name'] ?? '') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" data-lang="recv_lbl_qty_pcs">Quantity (Pieces)</label>
+                        <input type="number" id="qty_pcs" class="form-control text-center" oninput="calculateCtn()">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-primary" data-lang="recv_lbl_qty_ctns">Quantity (Cartons) *</label>
+                        <input type="number" name="qty" id="qty" class="form-control text-center fw-bold border-primary" placeholder="Masukkan Kuantiti (ctn)" data-lang-placeholder="recv_placeholder_qty" required min="1">
+                    </div>
                 </div>
             </div>
 
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="recv_lbl_shelf_life">Shelf Life (Months)</label>
-                    <input type="text" id="shelf_life" class="form-control readonly-input text-center" readonly>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="inv_col_pallet">Pallet Type</label>
-                    <select name="pallet_type" id="pallet_type" class="form-select" required>
-                        <option value="none" data-lang="pallet_none">None</option>
-                        <?php foreach ($pallet_types as $pt): ?>
-                            <option value="<?= htmlspecialchars($pt['code'] ?? '') ?>"><?= htmlspecialchars($pt['name'] ?? '') ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" data-lang="recv_lbl_qty_pcs">Quantity (Pieces)</label>
-                    <input type="number" id="qty_pcs" class="form-control text-center" oninput="calculateCtn()">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold text-primary" data-lang="recv_lbl_qty_ctns">Quantity (Cartons) *</label>
-                    <input type="number" name="qty" id="qty" class="form-control text-center fw-bold" placeholder="Masukkan Kuantiti (ctn)" data-lang-placeholder="recv_placeholder_qty" required min="1">
-                </div>
-            </div>
-
-            <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm" data-lang="recv_btn_confirm">Confirm Receive</button>
-                <a href="index.php" class="btn btn-secondary py-2 fw-bold" data-lang="btn_cancel">Cancel</a>
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-submit-green btn-lg shadow" data-lang="recv_btn_confirm"><i class="bi bi-check-circle-fill me-2"></i>Confirm Receive</button>
+                <a href="index.php" class="btn btn-outline-secondary py-2.5 fw-bold rounded-3 text-center" data-lang="btn_cancel"><i class="bi bi-x-circle me-1"></i>Cancel</a>
             </div>
         </form>
     </div>

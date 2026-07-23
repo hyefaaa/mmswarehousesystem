@@ -176,7 +176,7 @@ require_once 'includes/header.php';
             <div class="d-flex gap-2">
                 <a href="index.php" class="btn btn-outline-light"><i class="bi bi-house me-1"></i> Dashboard</a>
                 <a href="daily_closing_history.php" class="btn btn-warning text-dark fw-bold"><i class="bi bi-grid-3x3-gap-fill me-1"></i> View History Matrix</a>
-                <button type="button" class="btn btn-info text-white fw-bold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print Sheet</button>
+                <button type="button" class="btn btn-info text-white fw-bold" onclick="window.print()"><i class="bi bi-printer me-1"></i> <span data-lang="btn_print_sheet">Print Sheet</span></button>
             </div>
         </div>
     </div>
@@ -221,9 +221,9 @@ require_once 'includes/header.php';
                 </div>
                 <div class="col-md-6 col-6 text-end pt-4 no-print">
                     <?php if (!$existing_report): ?>
-                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-shield-lock-fill me-1"></i> SAVE & LOCK CLOSING</button>
+                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-shield-lock-fill me-1"></i> <span data-lang="btn_save_lock">SAVE & LOCK CLOSING</span></button>
                     <?php elseif ($role === 'admin'): ?>
-                        <button type="button" class="btn btn-outline-danger fw-bold" onclick="unlockReport()"><i class="bi bi-unlock-fill me-1"></i> Unlock/Edit (Admin)</button>
+                        <button type="button" class="btn btn-outline-danger fw-bold" onclick="unlockReport()"><i class="bi bi-unlock-fill me-1"></i> <span data-lang="btn_unlock_edit">Unlock/Edit (Admin)</span></button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -235,11 +235,11 @@ require_once 'includes/header.php';
                     <table class="table table-bordered table-hover align-middle mb-0">
                         <thead class="table-dark">
                             <tr>
-                                <th width="40%">Product Name</th>
-                                <th width="15%" class="text-center">System Qty (Ctn)</th>
-                                <th width="15%" class="text-center">System Qty (Pcs)</th>
-                                <th width="15%" class="text-center">Physical Count (Ctn)</th>
-                                <th width="15%" class="text-center">Variance (Ctn)</th>
+                                <th width="40%" data-lang="inv_col_product">Product Name</th>
+                                <th width="15%" class="text-center" data-lang="col_sys_qty_ctn">System Qty (Ctn)</th>
+                                <th width="15%" class="text-center" data-lang="col_sys_qty_pcs">System Qty (Pcs)</th>
+                                <th width="15%" class="text-center" data-lang="col_phys_qty_ctn">Physical Count (Ctn)</th>
+                                <th width="15%" class="text-center" data-lang="col_variance_ctn">Variance (Ctn)</th>
                             </tr>
                         </thead>
                         <tbody>

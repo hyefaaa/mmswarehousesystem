@@ -72,13 +72,13 @@ require_once 'includes/header.php';
             <table class="table table-hover align-middle mb-0" id="logsTable">
                 <thead>
                     <tr class="text-secondary small fw-bold">
-                        <th>Tarikh & Masa</th>
-                        <th>Pengguna</th>
-                        <th>Tindakan (Action)</th>
-                        <th>Jadual Sasaran</th>
-                        <th class="text-center">ID Rekod</th>
-                        <th>Perincian Aktiviti</th>
-                        <th class="text-center">Alamat IP</th>
+                        <th data-lang="col_datetime">Tarikh & Masa</th>
+                        <th data-lang="col_user">Pengguna</th>
+                        <th data-lang="col_action_desc">Tindakan (Action)</th>
+                        <th data-lang="col_target_table">Jadual Sasaran</th>
+                        <th class="text-center" data-lang="col_record_id">ID Rekod</th>
+                        <th data-lang="col_activity_details">Perincian Aktiviti</th>
+                        <th class="text-center" data-lang="col_ip_address">Alamat IP</th>
                     </tr>
                 </thead>
                 <tbody>
