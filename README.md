@@ -63,26 +63,26 @@ graph TD
     subgraph "MMS WMS Core System"
         direction TB
         %% Modules
-        subgraph "Warehouse & Inventory"
+        subgraph WAI["Warehouse & Inventory"]
             RCV[Inbound Receiving]
             ST[Stock Transfer]
             SA[Stock Take / Adjustments]
         end
 
-        subgraph "Logistics & Outbound"
+        subgraph LAO["Logistics & Outbound"]
             CO[Commercial Outbound]
             PSS_DO[PSS Delivery Orders]
             LOG[Shipment Logs]
         end
 
-        subgraph "PSS Contract Management"
+        subgraph PSSCM["PSS Contract Management"]
             HUB[PSS Master Hub Dashboard]
             IMP[CO Import & SAP Generation]
             ARC[Batch Archives]
             MAS[Master Registry Upload]
         end
 
-        subgraph "Pallet Ledger"
+        subgraph PL["Pallet Ledger"]
             PM[Pallet Balance Tracking]
         end
     end
@@ -91,17 +91,17 @@ graph TD
     DB[(MariaDB / MySQL)]
 
     %% Access & Flows
-    Admin -->|Full Access & Config| PSS Contract Management
-    Admin -->|Oversight| Warehouse & Inventory
-    Staff -->|Executes| Warehouse & Inventory
-    Staff -->|Processes| Logistics & Outbound
-    Staff -->|Updates| Pallet Ledger
+    Admin -->|Full Access & Config| PSSCM
+    Admin -->|Oversight| WAI
+    Staff -->|Executes| WAI
+    Staff -->|Processes| LAO
+    Staff -->|Updates| PL
     Dealer -->|Tracks Status| HUB
     Dealer -->|Generates DO| PSS_DO
 
     %% Data Flow
-    Warehouse & Inventory <--> DB
-    Logistics & Outbound <--> DB
-    PSS Contract Management <--> DB
-    Pallet Ledger <--> DB
+    WAI <--> DB
+    LAO <--> DB
+    PSSCM <--> DB
+    PL <--> DB
 ```
